@@ -9,6 +9,7 @@ python = "^3.10"
 fastapi = "^0.100.0"
 uvicorn = "^0.22.0"
 bcrypt = "^4.0.1"
+SQLAlchemy = "^2.0.18"
 
 [tool.poetry.dev-dependencies]
 
