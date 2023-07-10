@@ -1,29 +1,97 @@
 from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Dict, Any
+import typing
 import bcrypt
+import jwt
 
-from .constants import ErrorCode, TokenType, SECRET_ENCODING
-from .helpers import generate_client_id, generate_client_secret, hash_secret
+from . import constants
+from .import helpers
 
 @dataclass
 class Scope():
     name: str
     description: str
 
+    def to_output(self) -> "ScopeOut":
+        return ScopeOut(
+            name=self.name,
+            description=self.description
+        )
+
+@dataclass
+class ScopeUpsert(Scope):
+    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
+        self_dict = asdict(self)
+        return self_dict
+
+@dataclass
+class TokenModel():
+    id: str
+    issuer: str
+    expires_in: int
+
+    def generate_token(self, payload: typing.Dict[str, typing.Any]) -> str:
+        raise NotImplementedError()
+    
+    def to_output(self) -> "TokenModelOut":
+        raise NotImplementedError()
+
+@dataclass
+class TokenModelUpsert(TokenModel):
+    token_type: constants.TokenType
+    key_id: typing.Optional[str]
+    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
+
+    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
+        self_dict = asdict(self)
+        
+        self_dict["token_type"] = self.token_type.value
+        if self.signing_algorithm is not None: self_dict["signing_algorithm"] = self.signing_algorithm.value
+        return self_dict
+
+@dataclass
+class Payload():
+    jti: str
+    sub: str
+    iat: int
+    exp: int
+
+@dataclass
+class JWTToken(TokenModel):
+    key_id: str
+    key: str
+    signing_algorithm: constants.SigningAlgorithm
+
+    def generate_token(self, payload: Payload) -> str:
+        return jwt.encode(payload={
+            **asdict(payload),
+            constants.TokenClaim.ISSUER.value: self.issuer
+        }, key=self.key, algorithm=self.signing_algorithm.value)
+    
+    def to_output(self) -> "TokenModelOut":
+        return TokenModelOut(
+            id=self.id,
+            issuer=self.issuer,
+            expires_in=self.expires_in,
+            token_type=constants.TokenType.JWT,
+            key_id=self.key_id,
+            signing_algorithm=self.signing_algorithm
+        )
+
 @dataclass
 class ClientBase():
-    scopes: List[str]
+    scopes: typing.List[str]
 
 @dataclass
 class ClientUpsert(ClientBase):
-    id: str = field(default_factory=generate_client_id)
-    secret: str = field(default_factory=generate_client_secret)
-    hashed_secret: Optional[str] = field(init=False)
+    token_model_id: str
+    id: str = field(default_factory=helpers.generate_client_id)
+    secret: str = field(default_factory=helpers.generate_client_secret)
+    hashed_secret: typing.Optional[str] = field(init=False)
 
     def __post_init__(self) -> None:
-        self.hashed_secret = hash_secret(secret=self.secret)
+        self.hashed_secret = helpers.hash_secret(secret=self.secret)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
         self_dict = asdict(self)
         self_dict.pop("secret")
         return self_dict
@@ -32,38 +100,80 @@ class ClientUpsert(ClientBase):
 class Client(ClientBase):
     id: str
     hashed_secret: str
+    token_model: TokenModel
+
+    def to_output(self) -> "ClientOut":
+        return ClientOut(
+            id=self.id,
+            scopes=self.scopes,
+            token_model_id=self.token_model.id
+        )
 
     def is_authenticated(self, client_secret: str) -> bool:
         return bcrypt.checkpw(
-            password=client_secret.encode(SECRET_ENCODING),
-            hashed_password=self.hashed_secret.encode(SECRET_ENCODING)
+            password=client_secret.encode(constants.SECRET_ENCODING),
+            hashed_password=self.hashed_secret.encode(constants.SECRET_ENCODING)
         )
     
-    def are_scopes_allowed(self, scopes: List[str]) -> bool:
+    def are_scopes_allowed(self, scopes: typing.List[str]) -> bool:
         return set(scopes).issubset(set(self.scopes))
 
-########## API Models ##########
+#################### API Models ####################
 
 @dataclass
-class ClientIn(ClientBase):
-    pass
+class TokenModelIn(TokenModel):
+    token_type: constants.TokenType
+    key_id: typing.Optional[str]
+    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
+
+    def to_upsert(self) -> TokenModelUpsert:
+        return TokenModelUpsert(
+            id=self.id,
+            issuer=self.issuer,
+            expires_in=self.expires_in,
+            token_type=self.token_type,
+            key_id=self.key_id,
+            signing_algorithm=self.signing_algorithm
+        )
 
 @dataclass
-class ClientOut(ClientBase):
-    id: str
+class TokenModelOut(TokenModel):
+    token_type: constants.TokenType
+    key_id: typing.Optional[str]
+    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
 
 @dataclass
 class ScopeIn(Scope):
-    pass
+    
+    def to_upsert(self) -> ScopeUpsert:
+        return ScopeUpsert(
+            name=self.name,
+            description=self.description
+        )
 
 @dataclass
 class ScopeOut(Scope):
     pass
 
 @dataclass
+class ClientIn(ClientBase):
+    token_model_id: str
+
+    def to_upsert(self) -> ClientUpsert:
+        return ClientUpsert(
+            scopes=self.scopes,
+            token_model_id=self.token_model_id
+        )
+
+@dataclass
+class ClientOut(ClientBase):
+    id: str
+    token_model_id: str
+
+@dataclass
 class TokenResponse():
     access_token: str
-    token_type: TokenType
     expires_in: int
-    refresh_token: Optional[str] = None
-    scope: Optional[str] = None
+    token_type: str = field(default=constants.BEARER_TOKEN_TYPE)
+    refresh_token: typing.Optional[str] = None
+    scope: typing.Optional[str] = None
