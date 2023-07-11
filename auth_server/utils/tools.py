@@ -1,12 +1,14 @@
 import secrets
 import string
 import bcrypt
-import typing
-from fastapi import status
+import uuid
 
-from . import constants, exceptions
+from . import constants
 
 alphabet = string.ascii_letters + string.digits
+
+def generate_uuid() -> str:
+    return str(uuid.uuid4())
 
 def generate_client_id() -> str:
     return "".join(secrets.choice(alphabet) for _ in range(constants.CLIENT_ID_LENGH))

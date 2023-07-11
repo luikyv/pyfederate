@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 import typing
 from abc import ABC, abstractmethod
 
-from ..helpers import hash_secret
+from ..tools import hash_secret
 from .. import models
 from .. import schemas
 from .. import exceptions

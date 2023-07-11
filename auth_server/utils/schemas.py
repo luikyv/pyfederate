@@ -2,13 +2,11 @@ from dataclasses import dataclass, field, asdict
 import typing
 import bcrypt
 import jwt
-import uuid
 import time
-from datetime import datetime
 
 from . import constants
 from .constants import TokenClaim
-from .import helpers
+from .import tools
 
 @dataclass
 class Scope():
@@ -35,7 +33,7 @@ class TokenPayload():
     expiration: int
     client_id: str
     scopes: typing.List[str]
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    id: str = field(default_factory=tools.generate_uuid)
 
     def to_jwt_dict(self) -> typing.Dict[str, typing.Any]:
         return {
@@ -134,12 +132,12 @@ class ClientBase():
 @dataclass
 class ClientUpsert(ClientBase):
     token_model_id: str
-    id: str = field(default_factory=helpers.generate_client_id)
-    secret: str = field(default_factory=helpers.generate_client_secret)
+    id: str = field(default_factory=tools.generate_client_id)
+    secret: str = field(default_factory=tools.generate_client_secret)
     hashed_secret: typing.Optional[str] = field(init=False)
 
     def __post_init__(self) -> None:
-        self.hashed_secret = helpers.hash_secret(secret=self.secret)
+        self.hashed_secret = tools.hash_secret(secret=self.secret)
     
     def to_db_dict(self) -> typing.Dict[str, typing.Any]:
         self_dict = asdict(self)
@@ -165,8 +163,8 @@ class Client(ClientBase):
             hashed_password=self.hashed_secret.encode(constants.SECRET_ENCODING)
         )
     
-    def are_scopes_allowed(self, scopes: typing.List[str]) -> bool:
-        return set(scopes).issubset(set(self.scopes))
+    def are_scopes_allowed(self, requested_scopes: typing.List[str]) -> bool:
+        return set(requested_scopes).issubset(set(self.scopes))
 
 #################### API Models ####################
 
