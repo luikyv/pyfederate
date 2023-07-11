@@ -23,8 +23,14 @@ class TokenType(Enum):
     OPAQUE = "opaque"
 
 class TokenClaim(Enum):
-    SUBJECT = "sub"
+    AUDIENCE = "aud"
+    CLIENT_ID = "client_id"
+    EXPIRATION = "exp"
+    ISSUED_AT = "iat"
     ISSUER = "iss"
+    JWT_ID = "jti"
+    SUBJECT = "sub"
+    SCOPE = "scope"
 
 class SigningAlgorithm(Enum):
     HS256 = "HS256"

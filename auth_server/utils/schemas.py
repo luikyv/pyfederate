@@ -2,8 +2,12 @@ from dataclasses import dataclass, field, asdict
 import typing
 import bcrypt
 import jwt
+import uuid
+import time
+from datetime import datetime
 
 from . import constants
+from .constants import TokenClaim
 from .import helpers
 
 @dataclass
@@ -24,12 +28,44 @@ class ScopeUpsert(Scope):
         return self_dict
 
 @dataclass
+class TokenPayload():
+    subject: str
+    issuer: str
+    issued_at: int
+    expiration: int
+    client_id: str
+    scopes: typing.List[str]
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
+    def to_jwt_dict(self) -> typing.Dict[str, typing.Any]:
+        return {
+            TokenClaim.JWT_ID.value: self.id,
+            TokenClaim.SUBJECT.value: self.subject,
+            TokenClaim.ISSUER.value: self.issuer,
+            TokenClaim.ISSUED_AT.value: self.issued_at,
+            TokenClaim.EXPIRATION.value: self.expiration,
+            TokenClaim.CLIENT_ID.value: self.client_id,
+            TokenClaim.SCOPE.value: " ".join(self.scopes)
+        }
+
+@dataclass
+class BearerToken:
+    id: str
+    payload: TokenPayload
+    token: str
+
+@dataclass
 class TokenModel():
     id: str
     issuer: str
     expires_in: int
 
-    def generate_token(self, payload: typing.Dict[str, typing.Any]) -> str:
+    def generate_token(
+        self,
+        client_id: str,
+        subject: str,
+        scopes: typing.List[str]
+    ) -> BearerToken:
         raise NotImplementedError()
     
     def to_output(self) -> "TokenModelOut":
@@ -49,23 +85,37 @@ class TokenModelUpsert(TokenModel):
         return self_dict
 
 @dataclass
-class Payload():
-    jti: str
-    sub: str
-    iat: int
-    exp: int
-
-@dataclass
-class JWTToken(TokenModel):
+class JWTTokenModel(TokenModel):
     key_id: str
     key: str
     signing_algorithm: constants.SigningAlgorithm
 
-    def generate_token(self, payload: Payload) -> str:
-        return jwt.encode(payload={
-            **asdict(payload),
-            constants.TokenClaim.ISSUER.value: self.issuer
-        }, key=self.key, algorithm=self.signing_algorithm.value)
+    def generate_token(
+        self,
+        client_id: str,
+        subject: str,
+        scopes: typing.List[str]
+    ) -> BearerToken:
+
+        timestamp_now = int(time.time())
+        payload = TokenPayload(
+            subject=subject,
+            issuer=self.issuer,
+            issued_at=timestamp_now,
+            expiration=timestamp_now + self.expires_in,
+            client_id=client_id,
+            scopes=scopes
+        )
+
+        return BearerToken(
+            id=payload.id,
+            payload=payload,
+            token=jwt.encode(
+                payload=payload.to_jwt_dict(),
+                key=self.key,
+                algorithm=self.signing_algorithm.value
+            )
+        )
     
     def to_output(self) -> "TokenModelOut":
         return TokenModelOut(

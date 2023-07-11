@@ -1,23 +1,23 @@
 from typing import Optional, Dict, Any
-from fastapi import HTTPException as FastAPIHTTPException
 
 from . import constants
 
-class HTTPException(FastAPIHTTPException):
+class HTTPException(Exception):
     
     def __init__(
         self,
         status_code: int,
-        error_code: constants.ErrorCode,
-        detail: Any = None,
-        headers: Optional[Dict[str, str]] = None,
+        error: constants.ErrorCode,
+        error_description: str,
     ) -> None:
-        super().__init__(status_code=status_code, detail=detail, headers=headers)
-        self.error_code = error_code
+        
+        self.status_code = status_code
+        self.error = error
+        self.error_description = error_description
     
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
-        return f"{class_name}(status_code={self.status_code!r}, error_code={self.error_code.value} detail={self.detail!r})"
+        return f"{class_name}(status_code={self.status_code!r}, error={self.error.value} error_description={self.error_description!r})"
 
 class ScopeAlreadyExists(Exception):
     pass

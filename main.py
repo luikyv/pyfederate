@@ -30,8 +30,8 @@ async def unicorn_exception_handler(_: Request, exc: exceptions.HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "error_code": exc.error_code.value,
-            "detail": exc.detail
+            "error_code": exc.error.value,
+            "error_description": exc.error_description
         },
     )
 

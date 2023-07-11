@@ -105,8 +105,8 @@ async def get_client(client_id: str):
     except exceptions.ClientDoesNotExist:
         raise exceptions.HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            error_code=constants.ErrorCode.ACCESS_DENIED,
-            detail="invalid credentials"
+            error=constants.ErrorCode.ACCESS_DENIED,
+            error_description="invalid credentials"
         )
     
     return client.to_output()

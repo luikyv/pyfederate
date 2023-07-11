@@ -22,7 +22,7 @@ class TokenModel(Base):
     def to_schema(self) -> schemas.TokenModel:
         if(self.token_type == TokenType.JWT.value):
             if(self.key_id is None): raise RuntimeError("The key id is never null for jwt tokens")
-            return schemas.JWTToken(
+            return schemas.JWTTokenModel(
                 id=self.id,
                 issuer=self.issuer,
                 expires_in=self.expires_in,
