@@ -1,10 +1,9 @@
 import typing
 from fastapi import APIRouter, status, Query, Response
 
-from . import helpers
 from ..utils.constants import GrantType
-from ..utils import schemas
-from ..utils import constants
+from ..utils import constants, schemas
+from . import helpers
 from ..auth_manager import manager as auth_manager
 
 router = APIRouter(

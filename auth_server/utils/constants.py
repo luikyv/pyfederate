@@ -1,7 +1,9 @@
 from enum import Enum
+import logging
 
 ########## Configurations ##########
 
+LOG_LEVEL = logging.DEBUG
 DATABASE_URL = "sqlite:///./sql_app.db"
 CLIENT_ID_LENGH = 20
 CLIENT_SECRET_LENGH = 30

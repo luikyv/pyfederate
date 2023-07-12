@@ -13,38 +13,32 @@ class AuthManager():
     
     @property
     def token_model_manager(self) -> AbstractTokenModelManager:
-        if(self._token_model_manager is None):
-            raise RuntimeError()
+        if(self._token_model_manager is None): raise RuntimeError()
         return self._token_model_manager
     
     @token_model_manager.setter
     def token_model_manager(self, token_model_manager: AbstractTokenModelManager) -> None:
-        if(self._token_model_manager is not None):
-            raise RuntimeError()
+        if(self._token_model_manager is not None): raise RuntimeError()
         self._token_model_manager = token_model_manager
 
     @property
     def scope_manager(self) -> AbstractScopeManager:
-        if(self._scope_manager is None):
-            raise RuntimeError()
+        if(self._scope_manager is None): raise RuntimeError()
         return self._scope_manager
     
     @scope_manager.setter
     def scope_manager(self, scope_manager: AbstractScopeManager) -> None:
-        if(self._scope_manager is not None):
-            raise RuntimeError()
+        if(self._scope_manager is not None): raise RuntimeError()
         self._scope_manager = scope_manager
 
     @property
     def client_manager(self) -> AbstractClientManager:
-        if(self._client_manager is None):
-            raise RuntimeError()
+        if(self._client_manager is None): raise RuntimeError()
         return self._client_manager
     
     @client_manager.setter
     def client_manager(self, client_manager: AbstractClientManager) -> None:
-        if(self._client_manager is not None):
-            raise RuntimeError()
+        if(self._client_manager is not None): raise RuntimeError()
         self._client_manager = client_manager
     
     def is_ready(self) -> bool:

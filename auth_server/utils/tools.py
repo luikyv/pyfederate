@@ -18,3 +18,4 @@ def generate_client_secret() -> str:
 
 def hash_secret(secret: str) -> str:
     return bcrypt.hashpw(secret.encode(constants.SECRET_ENCODING), bcrypt.gensalt()).decode(constants.SECRET_ENCODING)
+
