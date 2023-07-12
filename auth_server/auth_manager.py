@@ -1,3 +1,5 @@
+import uvicorn
+
 from .utils.managers.token_manager import AbstractTokenModelManager
 from .utils.managers.scope_manager import AbstractScopeManager
 from .utils.managers.client_manager import AbstractClientManager
@@ -55,10 +57,14 @@ class AuthManager():
     
     def is_ready(self) -> bool:
         return (
-            self.token_model_manager is not None
-            and self.scope_manager is not None
-            and self.client_manager is not None
-            and self.session_manager is not None
+            self._token_model_manager is not None
+            and self._scope_manager is not None
+            and self._client_manager is not None
+            and self._session_manager is not None
         )
+    
+    def run(self) -> None:
+        assert self.is_ready(), "The auth manager is missing configurations"
+        uvicorn.run("main:app", host="0.0.0.0", port=8000)
 
 manager = AuthManager()

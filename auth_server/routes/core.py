@@ -6,6 +6,8 @@ from . import oauth, management
 from ..utils import constants, telemetry, tools, schemas, exceptions
 from ..auth_manager import manager as auth_manager
 
+logger = telemetry.get_logger(__name__)
+
 app = FastAPI()
 app.include_router(oauth.router)
 app.include_router(management.router)
@@ -16,7 +18,7 @@ async def set_telemetry_ids(request: Request, call_next) -> Response:
     """
 
     x_flow_id: str | None = request.headers.get(constants.HTTPHeaders.X_FLOW_ID.value)
-    callback_id: str | None = request.query_params.get("callback_id")
+    callback_id: str | None = request.query_params.get("callback_id") # FIXME: Would that be a breach?
 
     if callback_id is not None:
         # If the callback_id is not None, fetch the session associated to it if it exists,
@@ -24,7 +26,7 @@ async def set_telemetry_ids(request: Request, call_next) -> Response:
         try:
             session_info = await auth_manager.session_manager.get_record_by_callback_id(callback_id=callback_id)
         except exceptions.SessionInfoDoesNotExist:
-            pass
+            logger.info(f"The callback ID: {callback_id} has no session associated with it")
         else:
             telemetry.tracking_id.set(session_info.tracking_id)
             telemetry.flow_id.set(session_info.flow_id)

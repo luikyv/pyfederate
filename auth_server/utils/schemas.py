@@ -253,4 +253,4 @@ class SessionInfo():
     tracking_id: str
     flow_id: str
     callback_id: str | None = None
-    params: typing.Dict[str, typing.Any] = {}
+    params: typing.Dict[str, typing.Any] = field(default_factory=dict)
