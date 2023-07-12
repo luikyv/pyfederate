@@ -26,7 +26,7 @@ class ScopeUpsert(Scope):
         return self_dict
 
 @dataclass
-class TokenPayload():
+class TokenInfo():
     subject: str
     issuer: str
     issued_at: int
@@ -34,9 +34,10 @@ class TokenPayload():
     client_id: str
     scopes: typing.List[str]
     id: str = field(default_factory=tools.generate_uuid)
+    additional_info: typing.Optional[typing.Dict[str, str]] = None
 
-    def to_jwt_dict(self) -> typing.Dict[str, typing.Any]:
-        return {
+    def to_jwt_payload(self) -> typing.Dict[str, typing.Any]:
+        payload = {
             TokenClaim.JWT_ID.value: self.id,
             TokenClaim.SUBJECT.value: self.subject,
             TokenClaim.ISSUER.value: self.issuer,
@@ -45,11 +46,14 @@ class TokenPayload():
             TokenClaim.CLIENT_ID.value: self.client_id,
             TokenClaim.SCOPE.value: " ".join(self.scopes)
         }
+        if self.additional_info: payload = self.additional_info | payload
+
+        return payload
 
 @dataclass
 class BearerToken:
     id: str
-    payload: TokenPayload
+    info: TokenInfo
     token: str
 
 @dataclass
@@ -96,7 +100,7 @@ class JWTTokenModel(TokenModel):
     ) -> BearerToken:
 
         timestamp_now = int(time.time())
-        payload = TokenPayload(
+        token_info = TokenInfo(
             subject=subject,
             issuer=self.issuer,
             issued_at=timestamp_now,
@@ -106,10 +110,10 @@ class JWTTokenModel(TokenModel):
         )
 
         return BearerToken(
-            id=payload.id,
-            payload=payload,
+            id=token_info.id,
+            info=token_info,
             token=jwt.encode(
-                payload=payload.to_jwt_dict(),
+                payload=token_info.to_jwt_payload(),
                 key=self.key,
                 algorithm=self.signing_algorithm.value
             )
@@ -165,6 +169,12 @@ class Client(ClientBase):
     
     def are_scopes_allowed(self, requested_scopes: typing.List[str]) -> bool:
         return set(requested_scopes).issubset(set(self.scopes))
+
+@dataclass
+class GrantContext:
+    client: Client
+    token_model: TokenModel
+    requested_scopes: typing.List[str]
 
 #################### API Models ####################
 

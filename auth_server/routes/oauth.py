@@ -1,10 +1,12 @@
 import typing
-from fastapi import APIRouter, status, Query, Response
+from fastapi import APIRouter, status, Query, Response, Header
 
 from ..utils.constants import GrantType
-from ..utils import constants, schemas
+from ..utils import constants, telemetry, schemas
 from . import helpers
 from ..auth_manager import manager as auth_manager
+
+logger = telemetry.get_logger(__name__)
 
 router = APIRouter(
     tags = ["oauth"]
@@ -18,20 +20,29 @@ router = APIRouter(
 )
 async def token(
     response: Response,
-    client_id: str = Query(min_length=constants.CLIENT_ID_LENGH, max_length=constants.CLIENT_ID_LENGH),
-    client_secret: str = Query(max_length=constants.CLIENT_SECRET_LENGH, min_length=constants.CLIENT_SECRET_LENGH),
-    grant_type: GrantType = Query(),
-    scope: typing.Optional[str] = Query(default=None),
+    client_id: typing.Annotated[str, Query(min_length=constants.CLIENT_ID_LENGH, max_length=constants.CLIENT_ID_LENGH)],
+    client_secret: typing.Annotated[str, Query(max_length=constants.CLIENT_SECRET_LENGH, min_length=constants.CLIENT_SECRET_LENGH)],
+    grant_type: typing.Annotated[GrantType, Query()],
+    code: typing.Annotated[str | None, Query()] = None,
+    scope: typing.Annotated[str | None, Query()] = None,
+    x_flow_id: typing.Annotated[str | None, Header()] = None,
 ):
+    logger.info(f"Client {client_id} started the grant {grant_type.value}")
+    requested_scopes: typing.List[str] = scope.split(" ")  if scope is not None else []
+    client: schemas.Client = await helpers.get_valid_client(
+        client_id=client_id,
+        client_secret=client_secret,
+        requested_scopes=requested_scopes
+    )
+
+    grant_context = schemas.GrantContext(
+        client=client,
+        token_model=client.token_model,
+        requested_scopes=requested_scopes
+    )
     # Ensure clients don't cache the response
     response.headers["Cache-Control"] = "no-store"
 
-    client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
-    requested_scopes: typing.List[str] = scope.split(" ")  if scope is not None else []
-
-    helpers.validate_client(client=client, client_secret=client_secret, requested_scopes=requested_scopes)
-
     return helpers.grant_handlers[grant_type](
-        client,
-        requested_scopes,
+        grant_context
     )

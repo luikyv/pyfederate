@@ -15,6 +15,10 @@ KEYS = {
 
 ########## Enumerations ##########
 
+class HTTPHeaders(Enum):
+    CACHE_CONTROL = "Cache-Control"
+    X_FLOW_ID = "X-Flow-ID"
+
 class GrantType(Enum):
     CLIENT_CREDENTIALS = "client_credentials"
     AUTHORIZATION_CODE = "authorization_code"
@@ -40,3 +44,7 @@ class SigningAlgorithm(Enum):
 
 class ErrorCode(Enum):
     ACCESS_DENIED = "access_denied"
+    INVALID_REQUEST = "invalid_request"
+    INVALID_CLIENT = "invalid_client"
+    INVALID_GRANT = "invalid_grant"
+    INVALID_SCOPE = "invalid_scope"
