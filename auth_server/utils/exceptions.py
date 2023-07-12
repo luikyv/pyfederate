@@ -30,3 +30,9 @@ class ClientAlreadyExists(Exception):
 
 class ClientDoesNotExist(Exception):
     pass
+
+class SessionInfoAlreadyExists(Exception):
+    pass
+
+class SessionInfoDoesNotExist(Exception):
+    pass

@@ -4,7 +4,6 @@ from fastapi import APIRouter, status, Query, Response, Header
 from ..utils.constants import GrantType
 from ..utils import constants, telemetry, schemas
 from . import helpers
-from ..auth_manager import manager as auth_manager
 
 logger = telemetry.get_logger(__name__)
 

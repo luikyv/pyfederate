@@ -8,22 +8,7 @@ from . import constants
 from .constants import TokenClaim
 from .import tools
 
-@dataclass
-class Scope():
-    name: str
-    description: str
-
-    def to_output(self) -> "ScopeOut":
-        return ScopeOut(
-            name=self.name,
-            description=self.description
-        )
-
-@dataclass
-class ScopeUpsert(Scope):
-    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
-        self_dict = asdict(self)
-        return self_dict
+######################################## Token ########################################
 
 @dataclass
 class TokenInfo():
@@ -129,6 +114,66 @@ class JWTTokenModel(TokenModel):
             signing_algorithm=self.signing_algorithm
         )
 
+#################### API Models ####################
+
+@dataclass
+class TokenModelIn(TokenModel):
+    token_type: constants.TokenType
+    key_id: typing.Optional[str]
+    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
+
+    def to_upsert(self) -> TokenModelUpsert:
+        return TokenModelUpsert(
+            id=self.id,
+            issuer=self.issuer,
+            expires_in=self.expires_in,
+            token_type=self.token_type,
+            key_id=self.key_id,
+            signing_algorithm=self.signing_algorithm
+        )
+
+@dataclass
+class TokenModelOut(TokenModel):
+    token_type: constants.TokenType
+    key_id: typing.Optional[str]
+    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
+
+######################################## Scope ########################################
+
+@dataclass
+class Scope():
+    name: str
+    description: str
+
+    def to_output(self) -> "ScopeOut":
+        return ScopeOut(
+            name=self.name,
+            description=self.description
+        )
+
+@dataclass
+class ScopeUpsert(Scope):
+    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
+        self_dict = asdict(self)
+        return self_dict
+
+#################### API Models ####################
+
+@dataclass
+class ScopeIn(Scope):
+    
+    def to_upsert(self) -> ScopeUpsert:
+        return ScopeUpsert(
+            name=self.name,
+            description=self.description
+        )
+
+@dataclass
+class ScopeOut(Scope):
+    pass
+
+######################################## Client ########################################
+
 @dataclass
 class ClientBase():
     scopes: typing.List[str]
@@ -179,41 +224,6 @@ class GrantContext:
 #################### API Models ####################
 
 @dataclass
-class TokenModelIn(TokenModel):
-    token_type: constants.TokenType
-    key_id: typing.Optional[str]
-    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
-
-    def to_upsert(self) -> TokenModelUpsert:
-        return TokenModelUpsert(
-            id=self.id,
-            issuer=self.issuer,
-            expires_in=self.expires_in,
-            token_type=self.token_type,
-            key_id=self.key_id,
-            signing_algorithm=self.signing_algorithm
-        )
-
-@dataclass
-class TokenModelOut(TokenModel):
-    token_type: constants.TokenType
-    key_id: typing.Optional[str]
-    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
-
-@dataclass
-class ScopeIn(Scope):
-    
-    def to_upsert(self) -> ScopeUpsert:
-        return ScopeUpsert(
-            name=self.name,
-            description=self.description
-        )
-
-@dataclass
-class ScopeOut(Scope):
-    pass
-
-@dataclass
 class ClientIn(ClientBase):
     token_model_id: str
 
@@ -235,3 +245,12 @@ class TokenResponse():
     token_type: str = field(default=constants.BEARER_TOKEN_TYPE)
     refresh_token: typing.Optional[str] = None
     scope: typing.Optional[str] = None
+
+######################################## Session ########################################
+
+@dataclass
+class SessionInfo():
+    tracking_id: str
+    flow_id: str
+    callback_id: str | None = None
+    params: typing.Dict[str, typing.Any] = {}

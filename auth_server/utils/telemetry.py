@@ -6,8 +6,8 @@ from datetime import datetime
 
 from . import constants
 
-flow_id: contextvars.ContextVar[str] = contextvars.ContextVar("flow_id", default=str(uuid.UUID('00000000-0000-0000-0000-000000000000')))
 tracking_id: contextvars.ContextVar[str] = contextvars.ContextVar("tracking_id", default=str(uuid.UUID('00000000-0000-0000-0000-000000000000')))
+flow_id: contextvars.ContextVar[str] = contextvars.ContextVar("flow_id", default=str(uuid.UUID('00000000-0000-0000-0000-000000000000')))
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord):

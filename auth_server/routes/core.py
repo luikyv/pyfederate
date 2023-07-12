@@ -3,7 +3,8 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from . import oauth, management
-from ..utils import constants, telemetry, tools, exceptions
+from ..utils import constants, telemetry, tools, schemas, exceptions
+from ..auth_manager import manager as auth_manager
 
 app = FastAPI()
 app.include_router(oauth.router)
@@ -14,8 +15,23 @@ async def set_telemetry_ids(request: Request, call_next) -> Response:
     """Set the tracking and flow IDs for each request
     """
 
-    telemetry.tracking_id.set(tools.generate_uuid())
     x_flow_id: str | None = request.headers.get(constants.HTTPHeaders.X_FLOW_ID.value)
+    callback_id: str | None = request.query_params.get("callback_id")
+
+    if callback_id is not None:
+        # If the callback_id is not None, fetch the session associated to it if it exists,
+        # then set the tracking and flow IDs using the session information
+        try:
+            session_info = await auth_manager.session_manager.get_record_by_callback_id(callback_id=callback_id)
+        except exceptions.SessionInfoDoesNotExist:
+            pass
+        else:
+            telemetry.tracking_id.set(session_info.tracking_id)
+            telemetry.flow_id.set(session_info.flow_id)
+            return await call_next(request)
+    
+    # Set the default values for the tracking and flow IDs
+    telemetry.tracking_id.set(tools.generate_uuid())
     if(x_flow_id): telemetry.flow_id.set(x_flow_id)
 
     return await call_next(request)

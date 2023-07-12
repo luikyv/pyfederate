@@ -1,15 +1,17 @@
 from .utils.managers.token_manager import AbstractTokenModelManager
 from .utils.managers.scope_manager import AbstractScopeManager
 from .utils.managers.client_manager import AbstractClientManager
+from .utils.managers.session_manager import SessionManager
 
 class AuthManager():
 
     def __init__(
         self,
     ) -> None:
-        self._token_model_manager = None
-        self._scope_manager = None
-        self._client_manager = None
+        self._token_model_manager: AbstractTokenModelManager | None = None
+        self._scope_manager: AbstractScopeManager | None = None
+        self._client_manager: AbstractClientManager | None = None
+        self._session_manager: SessionManager | None = None
     
     @property
     def token_model_manager(self) -> AbstractTokenModelManager:
@@ -41,11 +43,22 @@ class AuthManager():
         if(self._client_manager is not None): raise RuntimeError()
         self._client_manager = client_manager
     
+    @property
+    def session_manager(self) -> SessionManager:
+        if(self._session_manager is None): raise RuntimeError()
+        return self._session_manager
+    
+    @session_manager.setter
+    def session_manager(self, session_manager: SessionManager) -> None:
+        if(self._session_manager is not None): raise RuntimeError()
+        self._session_manager = session_manager
+    
     def is_ready(self) -> bool:
         return (
             self.token_model_manager is not None
             and self.scope_manager is not None
             and self.client_manager is not None
+            and self.session_manager is not None
         )
 
 manager = AuthManager()
