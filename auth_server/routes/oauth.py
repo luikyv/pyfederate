@@ -25,7 +25,7 @@ async def token(
     grant_type: typing.Annotated[GrantType, Query()],
     code: typing.Annotated[str | None, Query()] = None,
     scope: typing.Annotated[str | None, Query()] = None,
-    x_flow_id: typing.Annotated[str | None, Header()] = None,
+    x_flow_id: typing.Annotated[str | None, Header(alias="X-Flow-ID")] = None,
 ):
     logger.info(f"Client {client_id} started the grant {grant_type.value}")
     requested_scopes: typing.List[str] = scope.split(" ")  if scope is not None else []

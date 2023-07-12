@@ -15,7 +15,7 @@ async def set_telemetry_ids(request: Request, call_next) -> Response:
     """
 
     telemetry.tracking_id.set(tools.generate_uuid())
-    x_flow_id: typing.Optional[str] = request.headers[constants.HTTPHeaders.X_FLOW_ID.value]
+    x_flow_id: str | None = request.headers.get(constants.HTTPHeaders.X_FLOW_ID.value)
     if(x_flow_id): telemetry.flow_id.set(x_flow_id)
 
     return await call_next(request)
