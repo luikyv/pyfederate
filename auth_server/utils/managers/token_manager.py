@@ -29,6 +29,12 @@ class TokenModelManager(ABC):
         pass
 
     @abstractmethod
+    async def get_model_key_ids(self) -> typing.List[str]:
+        """Get the signing keys defined in all the existent token models
+        """
+        pass
+
+    @abstractmethod
     async def delete_token_model(self, token_model_id: str) -> None:
         pass
 
@@ -61,6 +67,12 @@ class OLTPTokenModelManager(TokenModelManager):
         with Session(self.engine) as db:
             token_models_db: typing.List[models.TokenModel] = db.query(models.TokenModel).all()
         return [token_model.to_schema() for token_model in token_models_db]
+    
+    async def get_model_key_ids(self) -> typing.List[str]:
+        with Session(self.engine) as db:
+            token_models_db: typing.List[models.TokenModel] = db.query(models.TokenModel).all()
+
+        return [token_model_db.key_id for token_model_db in token_models_db if token_model_db.key_id]
 
     async def delete_token_model(self, token_model_id: str) -> None:
         with Session(self.engine) as db:

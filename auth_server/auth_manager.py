@@ -1,10 +1,12 @@
 import uvicorn
 from fastapi import FastAPI
+import asyncio
 
 from .utils.managers.token_manager import TokenModelManager
 from .utils.managers.scope_manager import ScopeManager
 from .utils.managers.client_manager import ClientManager
 from .utils.managers.session_manager import SessionManager
+from .utils import constants
 
 class AuthManager():
 
@@ -64,8 +66,13 @@ class AuthManager():
             and self._session_manager is not None
         )
     
+    async def verify_signing_keys(self) -> bool:
+        return set(constants.PRIVATE_JWKS.keys()).issuperset(set(await self.token_model_manager.get_model_key_ids()))
+    
     def run(self, app: FastAPI) -> None:
+        
         assert self.is_ready(), "The auth manager is missing configurations"
+        assert asyncio.run(self.verify_signing_keys()), "There are signing keys defined in the token models that are not available"
         uvicorn.run(app, host="0.0.0.0", port=8000)
 
 manager = AuthManager()
