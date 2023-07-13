@@ -21,15 +21,19 @@ class TokenModel(Base):
 
     def to_schema(self) -> schemas.TokenModel:
         if(self.token_type == TokenType.JWT.value):
-            if(self.key_id is None): raise RuntimeError("The key id is never null for jwt tokens")
+            if(self.key_id is None):
+                raise RuntimeError("The key id is never null for jwt tokens")
+            
+            jwk: constants.JWKInfo = constants.PRIVATE_JWKS[self.key_id]
             return schemas.JWTTokenModel(
                 id=self.id,
                 issuer=self.issuer,
                 expires_in=self.expires_in,
                 key_id=self.key_id,
-                key=constants.KEYS[self.key_id],
-                signing_algorithm=SigningAlgorithm(self.signing_algorithm)
+                key=jwk.key,
+                signing_algorithm=SigningAlgorithm(jwk.signing_algorithm)
             )
+        
         raise NotImplementedError()
 
 class Scope(Base):
@@ -63,9 +67,10 @@ class Client(Base):
     token_model_id: Mapped[int] = mapped_column(ForeignKey("token_models.id"))
     token_model: Mapped[TokenModel] = relationship(lazy="joined")
 
-    def to_schema(self) -> schemas.Client:
+    def to_schema(self, secret: str | None = None) -> schemas.Client:
         return schemas.Client(
             id=self.id,
+            secret=secret,
             hashed_secret=self.hashed_secret,
             scopes=[scope.name for scope in self.scopes],
             token_model=self.token_model.to_schema()

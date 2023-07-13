@@ -87,6 +87,7 @@ async def delete_client(scope_name: str) -> None:
 @router.post(
     "/client",
     status_code=status.HTTP_201_CREATED,
+    response_model_exclude_none=True,
     tags=["client"]
 )
 async def create_client(client_in: schemas.ClientIn) -> schemas.ClientOut:
@@ -96,8 +97,9 @@ async def create_client(client_in: schemas.ClientIn) -> schemas.ClientOut:
 @router.get(
     "/client/{client_id}",
     status_code=status.HTTP_200_OK,
+    response_model=schemas.ClientOut,
+    response_model_exclude_none=True,
     tags=["client"],
-    response_model=schemas.ClientOut
 )
 async def get_client(client_id: str):
     try:
@@ -114,6 +116,7 @@ async def get_client(client_id: str):
 @router.get(
     "/clients",
     status_code=status.HTTP_200_OK,
+    response_model_exclude_none=True,
     tags=["client"]
 )
 async def get_clients() -> typing.List[schemas.ClientOut]:

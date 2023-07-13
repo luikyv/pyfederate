@@ -46,7 +46,7 @@ def client_credentials_token_handler(
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
         subject=client.id,
-        scopes=client.scopes if grant_context.requested_scopes else grant_context.requested_scopes
+        scopes=grant_context.requested_scopes if grant_context.requested_scopes else client.scopes
     )
     return schemas.TokenResponse(
         access_token=token.token,

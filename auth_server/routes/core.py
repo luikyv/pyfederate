@@ -1,9 +1,8 @@
-import typing
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from . import oauth, management
-from ..utils import constants, telemetry, tools, schemas, exceptions
+from ..utils import constants, telemetry, tools, exceptions
 from ..auth_manager import manager as auth_manager
 
 logger = telemetry.get_logger(__name__)
@@ -27,10 +26,11 @@ async def set_telemetry_ids(request: Request, call_next) -> Response:
             session_info = await auth_manager.session_manager.get_record_by_callback_id(callback_id=callback_id)
         except exceptions.SessionInfoDoesNotExist:
             logger.info(f"The callback ID: {callback_id} has no session associated with it")
-        else:
-            telemetry.tracking_id.set(session_info.tracking_id)
-            telemetry.flow_id.set(session_info.flow_id)
-            return await call_next(request)
+            raise exceptions.SessionExpired(f"The session associated to the callback ID: {callback_id} has expired")
+        
+        telemetry.tracking_id.set(session_info.tracking_id)
+        telemetry.flow_id.set(session_info.flow_id)
+        return await call_next(request)
     
     # Set the default values for the tracking and flow IDs
     telemetry.tracking_id.set(tools.generate_uuid())

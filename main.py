@@ -20,4 +20,4 @@ if(__name__=="__main__"):
     auth_manager.client_manager = OLTPClientManager(engine=engine)
     auth_manager.session_manager = MockedSessionManager()
 
-    auth_manager.run()
+    auth_manager.run(app=app)

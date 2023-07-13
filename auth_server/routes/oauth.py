@@ -17,7 +17,7 @@ router = APIRouter(
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK
 )
-async def token(
+async def get_token(
     response: Response,
     client_id: typing.Annotated[str, Query(min_length=constants.CLIENT_ID_LENGH, max_length=constants.CLIENT_ID_LENGH)],
     client_secret: typing.Annotated[str, Query(max_length=constants.CLIENT_SECRET_LENGH, min_length=constants.CLIENT_SECRET_LENGH)],
@@ -45,3 +45,13 @@ async def token(
     return helpers.grant_handlers[grant_type](
         grant_context
     )
+
+@router.get(
+    "/authorize",
+    status_code=status.HTTP_303_SEE_OTHER
+)
+async def authorize(
+    client_id: str,
+    response_type: constants.ResponseType
+) -> None:
+    return None

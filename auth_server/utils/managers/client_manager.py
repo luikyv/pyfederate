@@ -10,7 +10,7 @@ from .. import models
 from .. import schemas
 from .. import exceptions
 
-class AbstractClientManager(ABC):
+class ClientManager(ABC):
 
     @abstractmethod
     async def create_client(self, client: schemas.ClientUpsert) -> schemas.Client:
@@ -44,7 +44,7 @@ class AbstractClientManager(ABC):
     async def delete_client(self, client_id: str) -> None:
         pass
 
-class MockedClientManager(AbstractClientManager):
+class MockedClientManager(ClientManager):
 
     def __init__(self,) -> None:
         self.clients: typing.Dict[str, schemas.Client] = {}
@@ -61,7 +61,7 @@ class MockedClientManager(AbstractClientManager):
     async def delete_client(self, client_id: str) -> None:
         self.clients.pop(client_id)
 
-class OLTPClientManager(AbstractClientManager):
+class OLTPClientManager(ClientManager):
 
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
@@ -77,7 +77,7 @@ class OLTPClientManager(AbstractClientManager):
             db.add(client_db)
             db.commit()
         
-        return client_db.to_schema()
+            return client_db.to_schema(secret=client.secret)
 
     async def update_client(self, client: schemas.Client) -> schemas.Client:
         raise RuntimeError()

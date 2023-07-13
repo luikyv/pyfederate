@@ -3,6 +3,7 @@ import typing
 import bcrypt
 import jwt
 import time
+from pydantic import ValidationError
 
 from . import constants
 from .constants import TokenClaim
@@ -61,14 +62,12 @@ class TokenModel():
 @dataclass
 class TokenModelUpsert(TokenModel):
     token_type: constants.TokenType
-    key_id: typing.Optional[str]
-    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
+    key_id: str | None
 
     def to_db_dict(self) -> typing.Dict[str, typing.Any]:
         self_dict = asdict(self)
         
         self_dict["token_type"] = self.token_type.value
-        if self.signing_algorithm is not None: self_dict["signing_algorithm"] = self.signing_algorithm.value
         return self_dict
 
 @dataclass
@@ -105,6 +104,7 @@ class JWTTokenModel(TokenModel):
         )
     
     def to_output(self) -> "TokenModelOut":
+
         return TokenModelOut(
             id=self.id,
             issuer=self.issuer,
@@ -119,8 +119,16 @@ class JWTTokenModel(TokenModel):
 @dataclass
 class TokenModelIn(TokenModel):
     token_type: constants.TokenType
-    key_id: typing.Optional[str]
-    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
+    key_id: typing.Optional[constants.JWK_IDS_LITERAL]
+
+    def __post_init__(self) -> None:
+
+        if(self.token_type != constants.TokenType.JWT):
+            return
+        
+        if(self.key_id is None):
+            raise ValidationError("JWT Token models must have a key_id and a signing_algorithm")
+
 
     def to_upsert(self) -> TokenModelUpsert:
         return TokenModelUpsert(
@@ -129,7 +137,6 @@ class TokenModelIn(TokenModel):
             expires_in=self.expires_in,
             token_type=self.token_type,
             key_id=self.key_id,
-            signing_algorithm=self.signing_algorithm
         )
 
 @dataclass
@@ -198,10 +205,12 @@ class Client(ClientBase):
     id: str
     hashed_secret: str
     token_model: TokenModel
+    secret: str | None = None
 
     def to_output(self) -> "ClientOut":
         return ClientOut(
             id=self.id,
+            secret=self.secret,
             scopes=self.scopes,
             token_model_id=self.token_model.id
         )
@@ -214,12 +223,6 @@ class Client(ClientBase):
     
     def are_scopes_allowed(self, requested_scopes: typing.List[str]) -> bool:
         return set(requested_scopes).issubset(set(self.scopes))
-
-@dataclass
-class GrantContext:
-    client: Client
-    token_model: TokenModel
-    requested_scopes: typing.List[str]
 
 #################### API Models ####################
 
@@ -237,6 +240,15 @@ class ClientIn(ClientBase):
 class ClientOut(ClientBase):
     id: str
     token_model_id: str
+    secret: str | None = None
+
+######################################## OAuth ########################################
+
+@dataclass
+class GrantContext:
+    client: Client
+    token_model: TokenModel
+    requested_scopes: typing.List[str]
 
 @dataclass
 class TokenResponse():

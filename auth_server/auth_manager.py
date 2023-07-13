@@ -1,8 +1,9 @@
 import uvicorn
+from fastapi import FastAPI
 
-from .utils.managers.token_manager import AbstractTokenModelManager
-from .utils.managers.scope_manager import AbstractScopeManager
-from .utils.managers.client_manager import AbstractClientManager
+from .utils.managers.token_manager import TokenModelManager
+from .utils.managers.scope_manager import ScopeManager
+from .utils.managers.client_manager import ClientManager
 from .utils.managers.session_manager import SessionManager
 
 class AuthManager():
@@ -10,38 +11,38 @@ class AuthManager():
     def __init__(
         self,
     ) -> None:
-        self._token_model_manager: AbstractTokenModelManager | None = None
-        self._scope_manager: AbstractScopeManager | None = None
-        self._client_manager: AbstractClientManager | None = None
+        self._token_model_manager: TokenModelManager | None = None
+        self._scope_manager: ScopeManager | None = None
+        self._client_manager: ClientManager | None = None
         self._session_manager: SessionManager | None = None
     
     @property
-    def token_model_manager(self) -> AbstractTokenModelManager:
+    def token_model_manager(self) -> TokenModelManager:
         if(self._token_model_manager is None): raise RuntimeError()
         return self._token_model_manager
     
     @token_model_manager.setter
-    def token_model_manager(self, token_model_manager: AbstractTokenModelManager) -> None:
+    def token_model_manager(self, token_model_manager: TokenModelManager) -> None:
         if(self._token_model_manager is not None): raise RuntimeError()
         self._token_model_manager = token_model_manager
 
     @property
-    def scope_manager(self) -> AbstractScopeManager:
+    def scope_manager(self) -> ScopeManager:
         if(self._scope_manager is None): raise RuntimeError()
         return self._scope_manager
     
     @scope_manager.setter
-    def scope_manager(self, scope_manager: AbstractScopeManager) -> None:
+    def scope_manager(self, scope_manager: ScopeManager) -> None:
         if(self._scope_manager is not None): raise RuntimeError()
         self._scope_manager = scope_manager
 
     @property
-    def client_manager(self) -> AbstractClientManager:
+    def client_manager(self) -> ClientManager:
         if(self._client_manager is None): raise RuntimeError()
         return self._client_manager
     
     @client_manager.setter
-    def client_manager(self, client_manager: AbstractClientManager) -> None:
+    def client_manager(self, client_manager: ClientManager) -> None:
         if(self._client_manager is not None): raise RuntimeError()
         self._client_manager = client_manager
     
@@ -63,8 +64,8 @@ class AuthManager():
             and self._session_manager is not None
         )
     
-    def run(self) -> None:
+    def run(self, app: FastAPI) -> None:
         assert self.is_ready(), "The auth manager is missing configurations"
-        uvicorn.run("main:app", host="0.0.0.0", port=8000)
+        uvicorn.run(app, host="0.0.0.0", port=8000)
 
 manager = AuthManager()

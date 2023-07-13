@@ -1,5 +1,3 @@
-from typing import Optional, Dict, Any
-
 from . import constants
 
 class HTTPException(Exception):
@@ -19,6 +17,12 @@ class HTTPException(Exception):
         class_name = self.__class__.__name__
         return f"{class_name}(status_code={self.status_code!r}, error={self.error.value} error_description={self.error_description!r})"
 
+class TokenModelAlreadyExists(Exception):
+    pass
+
+class TokenModelDoesNotExist(Exception):
+    pass
+
 class ScopeAlreadyExists(Exception):
     pass
 
@@ -35,4 +39,7 @@ class SessionInfoAlreadyExists(Exception):
     pass
 
 class SessionInfoDoesNotExist(Exception):
+    pass
+
+class SessionExpired(Exception):
     pass

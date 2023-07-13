@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 from .. import schemas, models, exceptions
 
-class AbstractScopeManager(ABC):
+class ScopeManager(ABC):
 
     @abstractmethod
     async def create_scope(self, scope: schemas.ScopeUpsert) -> None:
@@ -40,7 +40,7 @@ class AbstractScopeManager(ABC):
     async def delete_scope(self, scope_name: str) -> None:
         pass
 
-class OLTPScopeManager(AbstractScopeManager):
+class OLTPScopeManager(ScopeManager):
 
     def __init__(self, engine: Engine) -> None:
         self.engine = engine

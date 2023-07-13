@@ -6,8 +6,20 @@ from datetime import datetime
 
 from . import constants
 
-tracking_id: contextvars.ContextVar[str] = contextvars.ContextVar("tracking_id", default=str(uuid.UUID('00000000-0000-0000-0000-000000000000')))
-flow_id: contextvars.ContextVar[str] = contextvars.ContextVar("flow_id", default=str(uuid.UUID('00000000-0000-0000-0000-000000000000')))
+tracking_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "tracking_id",
+    default=str(uuid.UUID('00000000-0000-0000-0000-000000000000'))
+)
+flow_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "flow_id",
+    default=str(uuid.UUID('00000000-0000-0000-0000-000000000000'))
+)
+
+class ContextFilter(logging.Filter):
+    def filter(self, record):
+        record.tracking_id = tracking_id.get()
+        record.flow_id = flow_id.get()
+        return True
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord):
@@ -22,12 +34,6 @@ class JsonFormatter(logging.Formatter):
             "message": getattr(record, "msg", None),
         }
         return json.dumps(json_record)
-
-class ContextFilter(logging.Filter):
-    def filter(self, record):
-        record.tracking_id = tracking_id.get()
-        record.flow_id = flow_id.get()
-        return True
 
 def get_logger(name: str) -> logging.Logger:
     

@@ -4,10 +4,9 @@ from abc import ABC, abstractmethod
 from sqlalchemy import delete, Engine
 from sqlalchemy.orm import Session
 
-from .. import schemas, models
-from . import exceptions
+from .. import schemas, models, exceptions
 
-class AbstractTokenModelManager(ABC):
+class TokenModelManager(ABC):
 
     @abstractmethod
     async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
@@ -33,7 +32,7 @@ class AbstractTokenModelManager(ABC):
     async def delete_token_model(self, token_model_id: str) -> None:
         pass
 
-class OLTPTokenModelManager(AbstractTokenModelManager):
+class OLTPTokenModelManager(TokenModelManager):
 
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
