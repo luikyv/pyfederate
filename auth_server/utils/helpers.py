@@ -2,7 +2,7 @@ import typing
 from fastapi import status, Query
 
 from ..utils import constants, telemetry, schemas, exceptions
-from ..utils.constants import GrantType
+from .constants import GrantType
 from ..auth_manager import manager as auth_manager
 
 logger = telemetry.get_logger(__name__)

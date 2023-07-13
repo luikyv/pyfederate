@@ -3,7 +3,7 @@ from fastapi import APIRouter, status, Query, Response, Header, Depends
 
 from ..utils.constants import GrantType
 from ..utils import constants, telemetry, schemas
-from . import helpers
+from ..utils import helpers
 
 logger = telemetry.get_logger(__name__)
 
