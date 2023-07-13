@@ -1,5 +1,5 @@
 import typing
-from fastapi import APIRouter, status, Query, Response, Header
+from fastapi import APIRouter, status, Query, Response, Header, Depends
 
 from ..utils.constants import GrantType
 from ..utils import constants, telemetry, schemas
@@ -19,20 +19,14 @@ router = APIRouter(
 )
 async def get_token(
     response: Response,
-    client_id: typing.Annotated[str, Query(min_length=constants.CLIENT_ID_LENGH, max_length=constants.CLIENT_ID_LENGH)],
-    client_secret: typing.Annotated[str, Query(max_length=constants.CLIENT_SECRET_LENGH, min_length=constants.CLIENT_SECRET_LENGH)],
+    client: typing.Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
     grant_type: typing.Annotated[GrantType, Query()],
     code: typing.Annotated[str | None, Query()] = None,
     scope: typing.Annotated[str | None, Query()] = None,
     x_flow_id: typing.Annotated[str | None, Header(alias="X-Flow-ID")] = None,
 ):
-    logger.info(f"Client {client_id} started the grant {grant_type.value}")
+    logger.info(f"Client {client.id} started the grant {grant_type.value}")
     requested_scopes: typing.List[str] = scope.split(" ")  if scope is not None else []
-    client: schemas.Client = await helpers.get_valid_client(
-        client_id=client_id,
-        client_secret=client_secret,
-        requested_scopes=requested_scopes
-    )
 
     grant_context = schemas.GrantContext(
         client=client,
@@ -51,7 +45,7 @@ async def get_token(
     status_code=status.HTTP_303_SEE_OTHER
 )
 async def authorize(
-    client_id: str,
+    client: typing.Annotated[schemas.Client, Depends(helpers.get_client)],
     response_type: constants.ResponseType
 ) -> None:
     return None
