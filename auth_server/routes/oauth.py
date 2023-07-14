@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Query, Response, Depends
+from fastapi import APIRouter, status, Query, Path, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..auth_manager import manager as auth_manager
@@ -46,15 +46,15 @@ async def get_token(
 )
 async def authorize(
     client: Annotated[schemas.Client, Depends(helpers.get_client)],
-    response_type: constants.ResponseType,
-    redirect_uri: Annotated[str, Query()],
-    scope: Annotated[str, Query()],
-    state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
+    response_type: Annotated[constants.ResponseType, Path()],
+    redirect_uri: Annotated[str, Path()],
+    scope: Annotated[str, Path()],
+    state: Annotated[str, Path(max_length=constants.STATE_PARAM_MAX_LENGTH)],
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> str:
     
     if(not client.owns_redirect_uri(redirect_uri=redirect_uri)):
-        logger.info(f"The client with ID: {client.id} doesn't owns the redict_uri: {redirect_uri}")
+        logger.info(f"The client with ID: {client.id} doesn't own the redict_uri: {redirect_uri}")
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_REQUEST,
