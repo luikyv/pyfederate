@@ -6,6 +6,8 @@ from .. import exceptions
 
 logger = telemetry.get_logger(__name__)
 
+######################################## Interfaces ########################################
+
 class SessionManager(ABC):
 
     @abstractmethod
@@ -16,13 +18,13 @@ class SessionManager(ABC):
         """
         pass
     
-    # @abstractmethod
-    # async def get_session_by_auth_code(self, tracking_id: str) -> schemas.SessionInfo:
-    #     """
-    #     Throws:
-    #         exceptions.SessionInfoDoesNotExist
-    #     """
-    #     pass
+    @abstractmethod
+    async def get_session_by_auth_code(self, auth_code: str) -> schemas.SessionInfo:
+        """
+        Throws:
+            exceptions.SessionInfoDoesNotExist
+        """
+        pass
 
     @abstractmethod
     async def get_session_by_callback_id(self, callback_id: str) -> schemas.SessionInfo:
@@ -40,6 +42,8 @@ class SessionManager(ABC):
         """
         pass
 
+######################################## Implementations ########################################
+
 class MockedSessionManager(SessionManager):
 
     def __init__(self) -> None:
@@ -52,6 +56,16 @@ class MockedSessionManager(SessionManager):
             raise exceptions.ScopeAlreadyExists()
         
         self.sessions[session_info.tracking_id] = session_info
+    
+    async def get_session_by_auth_code(self, auth_code: str) -> schemas.SessionInfo:
+        filtered_sessions: typing.List[schemas.SessionInfo] = list(filter(
+            lambda session_info: session_info.auth_code == auth_code, self.sessions.values()
+        ))
+        if(len(filtered_sessions) != 1):
+            logger.info(f"The authorization code: {auth_code} has no associated session")
+            raise exceptions.SessionInfoDoesNotExist()
+        
+        return filtered_sessions[0]
     
     async def get_session_by_callback_id(self, callback_id: str) -> schemas.SessionInfo:
         

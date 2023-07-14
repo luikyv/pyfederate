@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 
 from .. import schemas, models, exceptions
 
+######################################## Interfaces ########################################
+
 class ScopeManager(ABC):
 
     @abstractmethod
@@ -39,6 +41,8 @@ class ScopeManager(ABC):
     @abstractmethod
     async def delete_scope(self, scope_name: str) -> None:
         pass
+
+######################################## Implementations ########################################
 
 class OLTPScopeManager(ScopeManager):
 

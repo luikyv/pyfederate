@@ -19,6 +19,7 @@ class GrantType(Enum):
 
 class ResponseType(Enum):
     CODE = "code"
+    CODE_ID_TOKEN = "code id_token"
 
 class TokenType(Enum):
     JWT = "jwt"

@@ -13,6 +13,12 @@ alphabet = string.ascii_letters + string.digits
 def generate_uuid() -> str:
     return str(uuid.uuid4())
 
+def generate_fixed_size_random_string(length: int) -> str:
+    return "".join(
+        secrets.choice(alphabet)
+        for _ in range(length)
+    )
+
 def generate_random_string(min_length: int, max_length: int) -> str:
     return "".join(
         secrets.choice(alphabet)
@@ -26,10 +32,10 @@ def generate_client_secret() -> str:
     return generate_random_string(constants.CLIENT_SECRET_MIN_LENGH, constants.CLIENT_SECRET_MAX_LENGH)
 
 def generate_callback_id() -> str:
-    return "".join(secrets.choice(alphabet) for _ in range(constants.CALLBACK_ID_LENGTH))
+    return generate_fixed_size_random_string(constants.CALLBACK_ID_LENGTH)
 
 def generate_auth_code() -> str:
-    return "".join(secrets.choice(alphabet) for _ in range(constants.AUTHORIZATION_CODE_LENGTH))
+    return generate_fixed_size_random_string(constants.AUTHORIZATION_CODE_LENGTH)
 
 def hash_secret(secret: str) -> str:
     return bcrypt.hashpw(

@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from .. import schemas, models, exceptions
 
+######################################## Interfaces ########################################
+
 class TokenModelManager(ABC):
 
     @abstractmethod
@@ -37,6 +39,8 @@ class TokenModelManager(ABC):
     @abstractmethod
     async def delete_token_model(self, token_model_id: str) -> None:
         pass
+
+######################################## Implementations ########################################
 
 class OLTPTokenModelManager(TokenModelManager):
 

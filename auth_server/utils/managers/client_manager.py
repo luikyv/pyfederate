@@ -10,6 +10,8 @@ from .. import models
 from .. import schemas
 from .. import exceptions
 
+######################################## Interfaces ########################################
+
 class ClientManager(ABC):
 
     @abstractmethod
@@ -43,6 +45,8 @@ class ClientManager(ABC):
     @abstractmethod
     async def delete_client(self, client_id: str) -> None:
         pass
+
+######################################## Implementations ########################################
 
 class MockedClientManager(ClientManager):
 

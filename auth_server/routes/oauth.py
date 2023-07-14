@@ -19,7 +19,6 @@ router = APIRouter(
     status_code=status.HTTP_200_OK
 )
 async def get_token(
-    response: Response,
     client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
     grant_type: Annotated[GrantType, Query()],
     code: Annotated[str | None, Query()] = None,
@@ -36,7 +35,7 @@ async def get_token(
         auth_code=code
     )
 
-    return helpers.grant_handlers[grant_type](
+    return await helpers.grant_handlers[grant_type](
         grant_context
     )
 
@@ -49,6 +48,7 @@ async def authorize(
     client: Annotated[schemas.Client, Depends(helpers.get_client)],
     response_type: constants.ResponseType,
     redirect_uri: Annotated[str, Query()],
+    scope: Annotated[str, Query()],
     state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> str:
@@ -67,8 +67,12 @@ async def authorize(
             tracking_id=telemetry.tracking_id.get(),
             correlation_id=telemetry.correlation_id.get(),
             callback_id=callback_id,
+            subject=None,
+            client_id=client.id,
             redirect_uri=redirect_uri,
-            state=state
+            state=state,
+            requested_scopes=scope.split(" "),
+            auth_code=None
         )
     )
     
@@ -84,9 +88,10 @@ async def authorize(
 async def callback_authorize(
     session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)]
 ):
+    session.auth_code = tools.generate_auth_code()
     return RedirectResponse(
         url=tools.prepare_url(session.redirect_uri, {
-            "code": tools.generate_auth_code(),
+            "code": session.auth_code,
             "state": session.state,
         }),
         status_code=status.HTTP_303_SEE_OTHER

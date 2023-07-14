@@ -273,7 +273,10 @@ class SessionInfo():
     tracking_id: str
     correlation_id: str
     callback_id: str | None
+    subject: str | None
+    client_id: str
     redirect_uri: str
     state: str
-    # auth_code: str | None
+    requested_scopes: typing.List[str]
+    auth_code: str | None
     # params: typing.Dict[str, typing.Any] = field(default_factory=dict)

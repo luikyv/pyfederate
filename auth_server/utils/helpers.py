@@ -1,4 +1,4 @@
-from typing import Annotated, Callable, Dict
+from typing import Annotated, Awaitable, Callable, Dict
 from fastapi import status, Query, Path
 
 from ..utils import constants, telemetry, schemas, exceptions
@@ -52,7 +52,7 @@ async def get_authenticated_client(
     return client
 
 async def setup_session_by_callback_id(
-    callback_id: Annotated[str, Path()]
+    callback_id: Annotated[str, Path(min_length=constants.CALLBACK_ID_LENGTH, max_length=constants.CALLBACK_ID_LENGTH)]
 ) -> schemas.SessionInfo:
     """
     Fetch the session associated to the callback_id if it exists and
@@ -78,7 +78,7 @@ async def setup_session_by_callback_id(
 
 #################### Client Credentials ####################
 
-def client_credentials_token_handler(
+async def client_credentials_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
     
@@ -103,23 +103,58 @@ def client_credentials_token_handler(
         expires_in=token_model.expires_in
     )
 
-#################### Handler Object ####################
+#################### Authorization Code ####################
 
-def not_implemented_token_handler(
+async def authorization_code_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
-    raise exceptions.HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error=constants.ErrorCode.ACCESS_DENIED,
-            error_description="Problem"
+    
+    if(grant_context.auth_code is None):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_GRANT,
+            error_description="the authorization code cannot be null for the authorization_code grant"
         )
+
+    session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_auth_code(
+        auth_code=grant_context.auth_code
+    )
+    client: schemas.Client = grant_context.client
+
+    # Ensure the client is the same one defined in the session
+    if(client.id != session.client_id):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid authorization code"
+        )
+    # Check if the scopes requested are available to the client
+    if(not client.are_scopes_allowed(requested_scopes=session.requested_scopes)):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error=constants.ErrorCode.INVALID_SCOPE,
+            error_description="the client does not have access to the required scopes"
+        )
+
+    token_model: schemas.TokenModel = client.token_model
+    token: schemas.BearerToken = token_model.generate_token(
+        client_id=client.id,
+        subject=client.id,
+        scopes=session.requested_scopes
+    )
+    return schemas.TokenResponse(
+        access_token=token.token,
+        expires_in=token_model.expires_in
+    )
+
+#################### Handler Object ####################
 
 grant_handlers: Dict[
     GrantType,
     Callable[
-        [schemas.GrantContext], schemas.TokenResponse
+        [schemas.GrantContext], Awaitable[schemas.TokenResponse]
     ]
 ] = {
     GrantType.CLIENT_CREDENTIALS: client_credentials_token_handler,
-    GrantType.AUTHORIZATION_CODE: not_implemented_token_handler
+    GrantType.AUTHORIZATION_CODE: authorization_code_token_handler
 }

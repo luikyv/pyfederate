@@ -40,6 +40,3 @@ class SessionInfoAlreadyExists(Exception):
 
 class SessionInfoDoesNotExist(Exception):
     pass
-
-class SessionExpired(Exception):
-    pass
