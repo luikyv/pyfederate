@@ -183,6 +183,7 @@ class ScopeOut(Scope):
 
 @dataclass
 class ClientBase():
+    redirect_uris: typing.List[str]
     scopes: typing.List[str]
 
 @dataclass
@@ -197,6 +198,7 @@ class ClientUpsert(ClientBase):
     
     def to_db_dict(self) -> typing.Dict[str, typing.Any]:
         self_dict = asdict(self)
+        self_dict["redirect_uris"] = " ".join(self.redirect_uris)
         self_dict.pop("secret")
         return self_dict
 
@@ -211,6 +213,7 @@ class Client(ClientBase):
         return ClientOut(
             id=self.id,
             secret=self.secret,
+            redirect_uris=self.redirect_uris,
             scopes=self.scopes,
             token_model_id=self.token_model.id
         )
@@ -223,6 +226,9 @@ class Client(ClientBase):
     
     def are_scopes_allowed(self, requested_scopes: typing.List[str]) -> bool:
         return set(requested_scopes).issubset(set(self.scopes))
+    
+    def owns_redirect_uri(self, redirect_uri: str) -> bool:
+        return redirect_uri in self.redirect_uris
 
 #################### API Models ####################
 
@@ -233,6 +239,7 @@ class ClientIn(ClientBase):
     def to_upsert(self) -> ClientUpsert:
         return ClientUpsert(
             scopes=self.scopes,
+            redirect_uris=self.redirect_uris,
             token_model_id=self.token_model_id
         )
 
@@ -249,6 +256,7 @@ class GrantContext:
     client: Client
     token_model: TokenModel
     requested_scopes: typing.List[str]
+    auth_code: str | None
 
 @dataclass
 class TokenResponse():
@@ -263,6 +271,9 @@ class TokenResponse():
 @dataclass
 class SessionInfo():
     tracking_id: str
-    flow_id: str
-    callback_id: str | None = None
-    params: typing.Dict[str, typing.Any] = field(default_factory=dict)
+    correlation_id: str
+    callback_id: str | None
+    redirect_uri: str
+    state: str
+    # auth_code: str | None
+    # params: typing.Dict[str, typing.Any] = field(default_factory=dict)

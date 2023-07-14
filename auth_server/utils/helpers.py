@@ -1,5 +1,5 @@
-import typing
-from fastapi import status, Query
+from typing import Annotated, Callable, Dict
+from fastapi import status, Query, Path
 
 from ..utils import constants, telemetry, schemas, exceptions
 from .constants import GrantType
@@ -10,9 +10,9 @@ logger = telemetry.get_logger(__name__)
 ######################################## Dependency Functions ########################################
 
 async def get_client(
-        client_id: typing.Annotated[
+        client_id: Annotated[
             str,
-            Query(min_length=constants.CLIENT_ID_LENGH, max_length=constants.CLIENT_ID_LENGH)
+            Query(min_length=constants.CLIENT_ID_MIN_LENGH, max_length=constants.CLIENT_ID_MAX_LENGH)
         ]
 ) -> schemas.Client:
     
@@ -29,13 +29,13 @@ async def get_client(
     return client
 
 async def get_authenticated_client(
-        client_id: typing.Annotated[
+        client_id: Annotated[
             str,
-            Query(min_length=constants.CLIENT_ID_LENGH, max_length=constants.CLIENT_ID_LENGH)
+            Query(min_length=constants.CLIENT_ID_MIN_LENGH, max_length=constants.CLIENT_ID_MAX_LENGH)
         ],
-        client_secret: typing.Annotated[
+        client_secret: Annotated[
             str,
-            Query(max_length=constants.CLIENT_SECRET_LENGH, min_length=constants.CLIENT_SECRET_LENGH)
+            Query(max_length=constants.CLIENT_SECRET_MIN_LENGH, min_length=constants.CLIENT_SECRET_MAX_LENGH)
         ]       
 ) -> schemas.Client:
     
@@ -50,6 +50,29 @@ async def get_authenticated_client(
         )
     
     return client
+
+async def setup_session_by_callback_id(
+    callback_id: Annotated[str, Path()]
+) -> schemas.SessionInfo:
+    """
+    Fetch the session associated to the callback_id if it exists and
+    set the tracking and correlation IDs using the session information
+    """
+    
+    try:
+        session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_callback_id(callback_id=callback_id)
+    except exceptions.SessionInfoDoesNotExist:
+        logger.info(f"The callback ID: {callback_id} has no session associated with it")
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="Invalid callback ID"
+        )
+    
+    # Overwrite the telemetry IDs set by default with the ones from the session
+    telemetry.tracking_id.set(session.tracking_id)
+    telemetry.correlation_id.set(session.correlation_id)
+    return session
 
 ######################################## Grant Handlers ########################################
 
@@ -91,9 +114,9 @@ def not_implemented_token_handler(
             error_description="Problem"
         )
 
-grant_handlers: typing.Dict[
+grant_handlers: Dict[
     GrantType,
-    typing.Callable[
+    Callable[
         [schemas.GrantContext], schemas.TokenResponse
     ]
 ] = {

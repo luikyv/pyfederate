@@ -1,9 +1,10 @@
-import typing
-from fastapi import APIRouter, status, Query, Response, Header, Depends
+from typing import Annotated, List
+from fastapi import APIRouter, status, Query, Response, Depends
+from fastapi.responses import HTMLResponse, RedirectResponse
 
+from ..auth_manager import manager as auth_manager
 from ..utils.constants import GrantType
-from ..utils import constants, telemetry, schemas
-from ..utils import helpers
+from ..utils import constants, telemetry, schemas, tools, helpers, exceptions
 
 logger = telemetry.get_logger(__name__)
 
@@ -19,22 +20,21 @@ router = APIRouter(
 )
 async def get_token(
     response: Response,
-    client: typing.Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
-    grant_type: typing.Annotated[GrantType, Query()],
-    code: typing.Annotated[str | None, Query()] = None,
-    scope: typing.Annotated[str | None, Query()] = None,
-    x_flow_id: typing.Annotated[str | None, Header(alias="X-Flow-ID")] = None,
+    client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
+    grant_type: Annotated[GrantType, Query()],
+    code: Annotated[str | None, Query()] = None,
+    scope: Annotated[str | None, Query()] = None,
+    _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):
     logger.info(f"Client {client.id} started the grant {grant_type.value}")
-    requested_scopes: typing.List[str] = scope.split(" ")  if scope is not None else []
+    requested_scopes: List[str] = scope.split(" ")  if scope is not None else []
 
     grant_context = schemas.GrantContext(
         client=client,
         token_model=client.token_model,
-        requested_scopes=requested_scopes
+        requested_scopes=requested_scopes,
+        auth_code=code
     )
-    # Ensure clients don't cache the response
-    response.headers["Cache-Control"] = "no-store"
 
     return helpers.grant_handlers[grant_type](
         grant_context
@@ -42,10 +42,52 @@ async def get_token(
 
 @router.get(
     "/authorize",
-    status_code=status.HTTP_303_SEE_OTHER
+    response_class=HTMLResponse,
+    status_code=status.HTTP_200_OK
 )
 async def authorize(
-    client: typing.Annotated[schemas.Client, Depends(helpers.get_client)],
-    response_type: constants.ResponseType
-) -> None:
-    return None
+    client: Annotated[schemas.Client, Depends(helpers.get_client)],
+    response_type: constants.ResponseType,
+    redirect_uri: Annotated[str, Query()],
+    state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
+    _: constants.CORRELATION_ID_HEADER_TYPE = None,
+) -> str:
+    
+    if(not client.owns_redirect_uri(redirect_uri=redirect_uri)):
+        logger.info(f"The client with ID: {client.id} doesn't owns the redict_uri: {redirect_uri}")
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid redirect_uri"
+        )
+    
+    callback_id: str = tools.generate_callback_id()
+    await auth_manager.session_manager.create_session(
+        schemas.SessionInfo(
+            tracking_id=telemetry.tracking_id.get(),
+            correlation_id=telemetry.correlation_id.get(),
+            callback_id=callback_id,
+            redirect_uri=redirect_uri,
+            state=state
+        )
+    )
+    
+    return f"""
+            <form action="/authorize/{callback_id}" method="post">
+            <input type="submit" value="Submit">
+            </form>
+        """
+
+@router.post(
+    "/authorize/{callback_id}",
+)
+async def callback_authorize(
+    session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)]
+):
+    return RedirectResponse(
+        url=tools.prepare_url(session.redirect_uri, {
+            "code": tools.generate_auth_code(),
+            "state": session.state,
+        }),
+        status_code=status.HTTP_303_SEE_OTHER
+    )

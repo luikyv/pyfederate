@@ -10,15 +10,15 @@ tracking_id: contextvars.ContextVar[str] = contextvars.ContextVar(
     "tracking_id",
     default=str(uuid.UUID('00000000-0000-0000-0000-000000000000'))
 )
-flow_id: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "flow_id",
+correlation_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "correlation_id",
     default=str(uuid.UUID('00000000-0000-0000-0000-000000000000'))
 )
 
 class ContextFilter(logging.Filter):
     def filter(self, record):
         record.tracking_id = tracking_id.get()
-        record.flow_id = flow_id.get()
+        record.correlation_id = correlation_id.get()
         return True
 
 class JsonFormatter(logging.Formatter):
@@ -26,7 +26,7 @@ class JsonFormatter(logging.Formatter):
 
         json_record = {
             "tracking_id": getattr(record, "tracking_id", None),
-            "flow_id": getattr(record, "flow_id", None),
+            "correlation_id": getattr(record, "correlation_id", None),
             "timestamp": datetime.now().isoformat(),
             "level": getattr(record, "levelname", None),
             "file": getattr(record, "filename", None),

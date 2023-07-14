@@ -9,15 +9,23 @@ logger = telemetry.get_logger(__name__)
 class SessionManager(ABC):
 
     @abstractmethod
-    async def create_record(self, session_info: schemas.SessionInfo) -> None:
+    async def create_session(self, session_info: schemas.SessionInfo) -> None:
         """
         Throws:
             exceptions.SessionInfoAlreadyExists
         """
         pass
     
+    # @abstractmethod
+    # async def get_session_by_auth_code(self, tracking_id: str) -> schemas.SessionInfo:
+    #     """
+    #     Throws:
+    #         exceptions.SessionInfoDoesNotExist
+    #     """
+    #     pass
+
     @abstractmethod
-    async def get_record(self, tracking_id: str) -> schemas.SessionInfo:
+    async def get_session_by_callback_id(self, callback_id: str) -> schemas.SessionInfo:
         """
         Throws:
             exceptions.SessionInfoDoesNotExist
@@ -25,15 +33,7 @@ class SessionManager(ABC):
         pass
 
     @abstractmethod
-    async def get_record_by_callback_id(self, callback_id: str) -> schemas.SessionInfo:
-        """
-        Throws:
-            exceptions.SessionInfoDoesNotExist
-        """
-        pass
-
-    @abstractmethod
-    async def delete_record(self, tracking_id: str) -> None:
+    async def delete_session(self, tracking_id: str) -> None:
         """
         Throws:
             exceptions.SessionInfoDoesNotExist
@@ -45,7 +45,7 @@ class MockedSessionManager(SessionManager):
     def __init__(self) -> None:
         self.sessions: typing.Dict[str, schemas.SessionInfo] = {}
     
-    async def create_record(self, session_info: schemas.SessionInfo) -> None:
+    async def create_session(self, session_info: schemas.SessionInfo) -> None:
 
         if(session_info.tracking_id in self.sessions):
             logger.info(f"The tracking ID: {session_info.tracking_id} has already an associated session")
@@ -53,16 +53,7 @@ class MockedSessionManager(SessionManager):
         
         self.sessions[session_info.tracking_id] = session_info
     
-    async def get_record(self, tracking_id: str) -> schemas.SessionInfo:
-
-        session_info: schemas.SessionInfo | None = self.sessions.get(tracking_id, None)
-        if(session_info is None):
-            logger.info(f"The tracking ID: {tracking_id} has no associated session")
-            raise exceptions.SessionInfoDoesNotExist()
-        
-        return session_info
-    
-    async def get_record_by_callback_id(self, callback_id: str) -> schemas.SessionInfo:
+    async def get_session_by_callback_id(self, callback_id: str) -> schemas.SessionInfo:
         
         filtered_sessions: typing.List[schemas.SessionInfo] = list(filter(
             lambda session_info: session_info.callback_id == callback_id, self.sessions.values()
@@ -73,5 +64,5 @@ class MockedSessionManager(SessionManager):
         
         return filtered_sessions[0]
 
-    async def delete_record(self, tracking_id: str) -> None:
+    async def delete_session(self, tracking_id: str) -> None:
         self.sessions.pop(tracking_id)
