@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Query, Path, Depends, Request, Response
+from fastapi import APIRouter, status, Query, Depends, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..auth_manager import manager as auth_manager
@@ -45,9 +45,9 @@ async def get_token(
 )
 async def authorize(
     client: Annotated[schemas.Client, Depends(helpers.get_valid_client)],
-    redirect_uri: Annotated[str, Path()], # This redirect_uri is already validated when creating the client
-    scope: Annotated[str, Path()],
-    state: Annotated[str, Path(max_length=constants.STATE_PARAM_MAX_LENGTH)],
+    redirect_uri: Annotated[str, Query()], # This redirect_uri is already validated when creating the client
+    scope: Annotated[str, Query()],
+    state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
     request: Request,
     response: Response,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
@@ -55,19 +55,19 @@ async def authorize(
     
     try:
         authn_first_step: schemas.AuthnStep = auth_manager.pick_policy().first_step
+        logger.info(f"Policy retrieved")
     except exceptions.NoAuthenticationPoliciesAvailable:
-        logger.info(f"No authentication policy found for client with ID: {client.id}")
+        logger.error(f"No authentication policy found for client with ID: {client.id}")
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="no policy found"
         )
     
-    callback_id: str = tools.generate_callback_id()
     session = schemas.SessionInfo(
         tracking_id=telemetry.tracking_id.get(),
         correlation_id=telemetry.correlation_id.get(),
-        callback_id=callback_id,
+        callback_id=tools.generate_callback_id(),
         user_id=None,
         client_id=client.id,
         redirect_uri=redirect_uri,
@@ -78,30 +78,16 @@ async def authorize(
     )
     await auth_manager.session_manager.create_session(session_info=session)
 
-    authn_status: constants.AuthnStatus = await authn_first_step.authn_func(session, request, response)
-    return helpers.authn_status_handlers[authn_status](
-        session,
-        response
-    )
+    return await helpers.manage_authentication(session, request, response)
 
-    
-    # return f"""
-    #         <form action="/authorize/{callback_id}" method="post">
-    #         <input type="submit" value="Submit">
-    #         </form>
-    #        """
 
 @router.post(
     "/authorize/{callback_id}",
+    response_class=HTMLResponse
 )
 async def callback_authorize(
     session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)],
     request: Request,
     response: Response,
 ):
-    authn_step: schemas.AuthnStep = schemas.AUTHN_STEPS[session.current_authn_step_id]
-    authn_status: constants.AuthnStatus = await authn_step.authn_func(session, request, response)
-    return helpers.authn_status_handlers[authn_status](
-        session,
-        response
-    )
+    return await helpers.manage_authentication(session, request, response)

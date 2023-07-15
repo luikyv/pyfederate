@@ -197,6 +197,7 @@ class ClientUpsert(ClientBase):
     def to_db_dict(self) -> typing.Dict[str, typing.Any]:
         self_dict = asdict(self)
         self_dict["redirect_uris"] = " ".join(self.redirect_uris)
+        self_dict["response_types"] = ",".join([r.value for r in self.response_types])
         self_dict.pop("secret")
         return self_dict
 

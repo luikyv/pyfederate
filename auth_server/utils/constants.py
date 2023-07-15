@@ -10,6 +10,7 @@ from fastapi import Header
 
 class HTTPHeaders(Enum):
     CACHE_CONTROL = "Cache-Control"
+    LOCATION = "location"
     X_CORRELATION_ID = "X-Correlation-ID"
 
 class GrantType(Enum):
@@ -47,9 +48,9 @@ class ErrorCode(Enum):
     INVALID_SCOPE = "invalid_scope"
 
 class AuthnStatus(Enum):
-    SUCCESS = "success"
     IN_PROGRESS = "in_progress"
     FAILURE = "failure"
+    SUCCESS = "success"
 
 ########## Configurations ##########
 

@@ -74,7 +74,7 @@ class Client(Base):
             secret=secret,
             hashed_secret=self.hashed_secret,
             redirect_uris=self.redirect_uris.split(" "),
-            response_types=[constants.ResponseType(response_type) for response_type in self.response_types.split()],
+            response_types=[constants.ResponseType(response_type) for response_type in self.response_types.split(",")],
             scopes=[scope.name for scope in self.scopes],
             token_model=self.token_model.to_schema()
         )

@@ -1,6 +1,6 @@
 from typing import List
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 import asyncio
 
 from .utils.managers.token_manager import TokenModelManager
@@ -80,7 +80,6 @@ class AuthManager():
         authn_step: schemas.AuthnStep = schemas.AUTHN_STEPS[session.current_authn_step_id]
 
         return None
-
     
     def is_ready(self) -> bool:
         return (

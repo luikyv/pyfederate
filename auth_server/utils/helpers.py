@@ -1,6 +1,5 @@
 from typing import Annotated, Awaitable, Callable, Dict
 from fastapi import status, Query, Path, Request, Response
-from fastapi.responses import RedirectResponse
 
 from ..utils import constants, telemetry, schemas, tools, exceptions
 from .constants import GrantType, AuthnStatus, ErrorCode
@@ -32,10 +31,10 @@ async def get_client(
 async def get_valid_client(
         client_id: Annotated[
             str,
-            Path(min_length=constants.CLIENT_ID_MIN_LENGH, max_length=constants.CLIENT_ID_MAX_LENGH)
+            Query(min_length=constants.CLIENT_ID_MIN_LENGH, max_length=constants.CLIENT_ID_MAX_LENGH)
         ],
-        response_type: Annotated[constants.ResponseType, Path()],
-        redirect_uri: Annotated[str, Path()],
+        response_type: Annotated[constants.ResponseType, Query()],
+        redirect_uri: Annotated[str, Query()],
 ) -> schemas.Client:
     try:
         client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
@@ -200,45 +199,94 @@ grant_handlers: Dict[
 
 #################### In Progress ####################
 
-def authn_failure_handler(
+async def get_in_progress_next_step(
     session: schemas.SessionInfo,
+    current_step: schemas.AuthnStep,
     response: Response
-) -> Response:
-    return RedirectResponse(
-        url=tools.prepare_url(session.redirect_uri, {
+) -> schemas.AuthnStep | None:
+    """Get the next step after reaching an in progress one"""
+    
+    # Update the session to indicate the processing
+    # stopped at the current step
+    session.current_authn_step_id = current_step.id
+
+    # Since the current status is IN_PROGRESS,
+    # return None to indicate the partial processing finished
+    return None
+
+#################### Failure ####################
+
+async def get_failure_next_step(
+    session: schemas.SessionInfo,
+    current_step: schemas.AuthnStep,
+    response: Response
+) -> schemas.AuthnStep | None:
+    """Get the next step after reaching a failure one"""
+    
+    next_step = current_step.failure_next_step
+    # If the next step for a failure case is None, the policy failed
+    if(next_step is None):
+        response.status_code = status.HTTP_303_SEE_OTHER
+        response.headers[constants.HTTPHeaders.LOCATION.value] = tools.prepare_redirect_url(session.redirect_uri, {
             "error": ErrorCode.ACCESS_DENIED.value,
             "error_description": "access denied",
-        }),
-        status_code=status.HTTP_303_SEE_OTHER
-    )
+        })
+        await auth_manager.session_manager.delete_session(tracking_id=session.tracking_id)
 
-def authn_in_progress_handler(
-    session: schemas.SessionInfo,
-    response: Response
-) -> Response:
-    return response
+    return next_step
 
-def authn_success_handler(
+#################### Success ####################
+
+async def get_success_next_step(
     session: schemas.SessionInfo,
+    current_step: schemas.AuthnStep,
     response: Response
-) -> Response:
-    session.authz_code = tools.generate_authz_code()
-    return RedirectResponse(
-        url=tools.prepare_url(session.redirect_uri, {
+) -> schemas.AuthnStep | None:
+    """Get the next step after reaching a successful one"""
+    
+    next_step = current_step.success_next_step
+    # If the next step for a success case is None, the policy finished successfully
+    if(next_step is None):
+        session.authz_code = tools.generate_authz_code()
+        response.status_code = status.HTTP_303_SEE_OTHER
+        response.headers[constants.HTTPHeaders.LOCATION.value] = tools.prepare_redirect_url(session.redirect_uri, {
             "code": session.authz_code,
             "state": session.state,
-        }),
-        status_code=status.HTTP_303_SEE_OTHER
-    )
+        })
 
-authn_status_handlers: Dict[
+    return next_step
+
+#################### Handler Object ####################
+
+# Map each status to a function that gets the next appropriate step
+step_update_handler: Dict[
     AuthnStatus,
     Callable[
-        [schemas.SessionInfo, Response],
-        Response
+        [schemas.SessionInfo, schemas.AuthnStep, Response],
+        Awaitable[schemas.AuthnStep | None]
     ]
 ] = {
-    AuthnStatus.FAILURE: authn_failure_handler,
-    AuthnStatus.IN_PROGRESS: authn_in_progress_handler,
-    AuthnStatus.SUCCESS: authn_success_handler
+    AuthnStatus.IN_PROGRESS: get_in_progress_next_step,
+    AuthnStatus.FAILURE: get_failure_next_step,
+    AuthnStatus.SUCCESS: get_success_next_step
 }
+
+async def manage_authentication(
+    session: schemas.SessionInfo,
+    request: Request,
+    response: Response
+) -> Response:
+    """Go through the available policy steps untill reach an end"""
+    
+    current_step: schemas.AuthnStep | None = schemas.AUTHN_STEPS[session.current_authn_step_id]
+    while(current_step):
+        authn_status: constants.AuthnStatus = await current_step.authn_func(session, request, response)
+        current_step = await step_update_handler[authn_status](
+            session,
+            current_step,
+            response
+        )
+    
+    # Once the current step is None, the partial processing finished,
+    # so we can return the updated response
+    return response

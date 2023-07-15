@@ -5,6 +5,7 @@ import string
 import bcrypt
 import uuid
 from random import randint
+from urllib.parse import quote
 
 from . import constants
 
@@ -43,9 +44,9 @@ def hash_secret(secret: str) -> str:
         bcrypt.gensalt()
     ).decode(constants.SECRET_ENCODING)
 
-def prepare_url(url: str, params: Dict[str, str]) -> str:
-    """Add path params to url"""
+def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
+    """Add path params to the redirect url"""
 
     request_url_builder = PreparedRequest()
     request_url_builder.prepare_url(url=url, params=params)
-    return request_url_builder.url # type: ignore
+    return quote(str(request_url_builder.url), safe=":/%#?=@[]!$&'()*+,;")
