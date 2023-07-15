@@ -44,13 +44,14 @@ async def get_token(
 )
 async def authorize(
     client: Annotated[schemas.Client, Depends(helpers.get_valid_client)],
-    redirect_uri: Annotated[str, Query()], # This redirect_uri is already validated when creating the client
+    # The redirect_uri and scope params are already validated when building the client above
+    redirect_uri: Annotated[str, Query()],
     scope: Annotated[str, Query()],
     state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
     request: Request,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):
-    
+
     try:
         authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(client=client, request=request)
         logger.info(f"Policy retrieved")

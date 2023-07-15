@@ -43,7 +43,7 @@ class SessionManager(ABC):
         pass
 
     @abstractmethod
-    async def delete_session(self, tracking_id: str) -> None:
+    async def delete_session(self, session_id: str) -> None:
         """
         Throws:
             exceptions.SessionInfoDoesNotExist
@@ -69,7 +69,7 @@ class MockedSessionManager(SessionManager):
         
         if(session_info not in self.sessions):
             raise exceptions.SessionInfoDoesNotExist()
-        
+
         self.sessions[session_info.id] = session_info
     
     async def get_session_by_authz_code(self, authz_code: str) -> schemas.SessionInfo:

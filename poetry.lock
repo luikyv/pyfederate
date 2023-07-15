@@ -168,6 +168,17 @@ docs = ["sphinx (>=4.5.0,<5.0.0)", "sphinx-rtd-theme", "zope.interface"]
 tests = ["pytest (>=6.0.0,<7.0.0)", "coverage[toml] (==5.0.4)"]
 
 [[package]]
+name = "python-dotenv"
+version = "1.0.0"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
+[[package]]
 name = "requests"
 version = "2.31.0"
 description = "Python HTTP for Humans."
@@ -283,7 +294,7 @@ standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "bdaa24d5a5da98376a00cee7a6556a2a15d626e4ce1828daf90eb3d06b7e2b1e"
+content-hash = "0fa226ae1072103ca0b9e8965ab1b3c3cc79a164c958e1ed36be3ed152ce9eee"
 
 [metadata.files]
 annotated-types = []
@@ -301,6 +312,7 @@ idna = []
 pydantic = []
 pydantic-core = []
 pyjwt = []
+python-dotenv = []
 requests = []
 sniffio = []
 sqlalchemy = []

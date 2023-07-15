@@ -5,6 +5,11 @@ import logging
 import json
 import os
 from fastapi import Header
+import base64
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ########## Enumerations ##########
 
@@ -53,18 +58,16 @@ class AuthnStatus(Enum):
     SUCCESS = "success"
 
 ########## Configurations ##########
-
-LOG_LEVEL = logging.DEBUG
-DATABASE_URL = "sqlite:///./sql_app.db"
-CLIENT_ID_MIN_LENGH = 20
-CLIENT_ID_MAX_LENGH = 25
-CLIENT_SECRET_MIN_LENGH = 45
-CLIENT_SECRET_MAX_LENGH = 50
-CALLBACK_ID_LENGTH = 20
-SESSION_ID_LENGTH = 20
-AUTHORIZATION_CODE_LENGTH = 20
-STATE_PARAM_MAX_LENGTH = 100
-SECRET_ENCODING = "utf-8"
+LOG_LEVEL = logging.getLevelName(os.environ.get("LOG_LEVEL", "DEBUG"))
+CLIENT_ID_MIN_LENGH = int(os.getenv("CLIENT_ID_MIN_LENGH", 20))
+CLIENT_ID_MAX_LENGH = int(os.getenv("CLIENT_ID_MAX_LENGH", 25))
+CLIENT_SECRET_MIN_LENGH = int(os.getenv("CLIENT_SECRET_MIN_LENGH", 45))
+CLIENT_SECRET_MAX_LENGH = int(os.getenv("CLIENT_SECRET_MAX_LENGH", 50))
+CALLBACK_ID_LENGTH = int(os.getenv("CALLBACK_ID_LENGTH", 20))
+SESSION_ID_LENGTH = int(os.getenv("SESSION_ID_LENGTH", 20))
+AUTHORIZATION_CODE_LENGTH = int(os.getenv("AUTHORIZATION_CODE_LENGTH", 20))
+STATE_PARAM_MAX_LENGTH = int(os.getenv("STATE_PARAM_MAX_LENGTH", 100))
+SECRET_ENCODING = os.getenv("SECRET_ENCODING", "utf-8")
 BEARER_TOKEN_TYPE = "bearer"
 
 @dataclass
@@ -74,14 +77,18 @@ class JWKInfo:
     signing_algorithm: str
 
 # Load the privates JWKs
-with open(os.path.join(os.path.dirname(__file__), "..", "..", "private_jwks.json"), "r") as f:
-    PRIVATE_JWKS: Dict[
-        str, JWKInfo
-    ] = {key["kid"]: JWKInfo(
+PRIVATE_JWKS: Dict[
+    str, JWKInfo
+] = {
+    key["kid"]: JWKInfo(
         key_id=key["kid"],
         key=key["k"],
         signing_algorithm=key["alg"]
-    ) for key in json.load(f)["keys"]}
+    ) for key in json.loads(
+        # The privates jwks are passed as a base64 enconded json through the env var PRIVATE_JWKS_JSON
+        base64.b64decode(os.environ["PRIVATE_JWKS_JSON"]).decode(SECRET_ENCODING)
+    )["keys"]
+}
 
 ########## Type Hints ##########
 JWK_IDS_LITERAL = Literal[tuple(PRIVATE_JWKS.keys())] # type: ignore

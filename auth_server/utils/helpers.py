@@ -1,4 +1,4 @@
-from typing import Annotated, Awaitable, Callable, Dict
+from typing import Annotated, Awaitable, Callable, Dict, List
 from fastapi import status, Query, Path, Request, Response
 import inspect
 
@@ -34,6 +34,7 @@ async def get_valid_client(
             str,
             Query(min_length=constants.CLIENT_ID_MIN_LENGH, max_length=constants.CLIENT_ID_MAX_LENGH)
         ],
+        scope: Annotated[str, Query()],
         response_type: Annotated[constants.ResponseType, Query()],
         redirect_uri: Annotated[str, Query()],
 ) -> schemas.Client:
@@ -45,6 +46,14 @@ async def get_valid_client(
             status_code=status.HTTP_401_UNAUTHORIZED,
             error=constants.ErrorCode.INVALID_CLIENT,
             error_description="invalid credentials"
+        )
+    
+    # Check if the scopes requested are available to the client
+    if(not client.are_scopes_allowed(requested_scopes=scope.split(" "))):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error=constants.ErrorCode.INVALID_SCOPE,
+            error_description="the client does not have access to the required scopes"
         )
     
     if(not client.owns_redirect_uri(redirect_uri=redirect_uri)):
@@ -165,13 +174,6 @@ async def authorization_code_token_handler(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="invalid authorization code"
         )
-    # Check if the scopes requested are available to the client
-    if(not client.are_scopes_allowed(requested_scopes=session.requested_scopes)):
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            error=constants.ErrorCode.INVALID_SCOPE,
-            error_description="the client does not have access to the required scopes"
-        )
 
     token_model: schemas.TokenModel = client.token_model
     token: schemas.BearerToken = token_model.generate_token(
@@ -179,6 +181,8 @@ async def authorization_code_token_handler(
         subject=client.id,
         scopes=session.requested_scopes
     )
+    # Delete the session to make sure the authz code can no longer be used
+    await auth_manager.session_manager.delete_session(session_id=session.id)
     return schemas.TokenResponse(
         access_token=token.token,
         expires_in=token_model.expires_in
@@ -203,7 +207,7 @@ grant_handlers: Dict[
 async def get_in_progress_next_step(
     session: schemas.SessionInfo,
     current_step: schemas.AuthnStep,
-    step_result: schemas.AuthnStepResult
+    _: schemas.AuthnStepResult
 ) -> schemas.AuthnStep | None:
     """Get the next step after reaching an in progress one"""
     
@@ -234,7 +238,7 @@ async def get_failure_next_step(
     
     # If the next step for a failure case is None, the policy failed
     step_result.set_redirect_uri(redirect_uri=session.redirect_uri)
-    await auth_manager.session_manager.delete_session(tracking_id=session.tracking_id)
+    await auth_manager.session_manager.delete_session(session_id=session.id)
     return None
 
 #################### Success ####################
