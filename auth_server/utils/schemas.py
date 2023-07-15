@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, asdict
-import typing
+from typing import Any, List, Dict, Optional, Callable, Awaitable
 import bcrypt
 import jwt
 import time
@@ -19,12 +19,13 @@ class TokenInfo():
     issued_at: int
     expiration: int
     client_id: str
-    scopes: typing.List[str]
+    scopes: List[str]
     id: str = field(default_factory=tools.generate_uuid)
-    additional_info: typing.Optional[typing.Dict[str, str]] = None
+    additional_info: Dict[str, str] = field(default_factory=dict)
 
-    def to_jwt_payload(self) -> typing.Dict[str, typing.Any]:
+    def to_jwt_payload(self) -> Dict[str, Any]:
         payload = {
+            **self.additional_info,
             TokenClaim.JWT_ID.value: self.id,
             TokenClaim.SUBJECT.value: self.subject,
             TokenClaim.ISSUER.value: self.issuer,
@@ -33,7 +34,6 @@ class TokenInfo():
             TokenClaim.CLIENT_ID.value: self.client_id,
             TokenClaim.SCOPE.value: " ".join(self.scopes)
         }
-        if self.additional_info: payload = self.additional_info | payload
 
         return payload
 
@@ -53,7 +53,8 @@ class TokenModel():
         self,
         client_id: str,
         subject: str,
-        scopes: typing.List[str]
+        scopes: List[str],
+        additional_claims: Dict[str, str]
     ) -> BearerToken:
         raise NotImplementedError()
     
@@ -65,7 +66,7 @@ class TokenModelUpsert(TokenModel):
     token_type: constants.TokenType
     key_id: str | None
 
-    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_db_dict(self) -> Dict[str, Any]:
         self_dict = asdict(self)
         
         self_dict["token_type"] = self.token_type.value
@@ -81,7 +82,8 @@ class JWTTokenModel(TokenModel):
         self,
         client_id: str,
         subject: str,
-        scopes: typing.List[str]
+        scopes: List[str],
+        additional_claims: Dict[str, str]
     ) -> BearerToken:
 
         timestamp_now = int(time.time())
@@ -91,7 +93,8 @@ class JWTTokenModel(TokenModel):
             issued_at=timestamp_now,
             expiration=timestamp_now + self.expires_in,
             client_id=client_id,
-            scopes=scopes
+            scopes=scopes,
+            additional_info=additional_claims
         )
 
         return BearerToken(
@@ -120,7 +123,7 @@ class JWTTokenModel(TokenModel):
 @dataclass
 class TokenModelIn(TokenModel):
     token_type: constants.TokenType
-    key_id: typing.Optional[constants.JWK_IDS_LITERAL]
+    key_id: constants.JWK_IDS_LITERAL | None
 
     def __post_init__(self) -> None:
         
@@ -140,8 +143,8 @@ class TokenModelIn(TokenModel):
 @dataclass
 class TokenModelOut(TokenModel):
     token_type: constants.TokenType
-    key_id: typing.Optional[str]
-    signing_algorithm: typing.Optional[constants.SigningAlgorithm]
+    key_id: str | None
+    signing_algorithm: constants.SigningAlgorithm | None
 
 ######################################## Scope ########################################
 
@@ -158,7 +161,7 @@ class Scope():
 
 @dataclass
 class ScopeUpsert(Scope):
-    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_db_dict(self) -> Dict[str, Any]:
         self_dict = asdict(self)
         return self_dict
 
@@ -181,23 +184,23 @@ class ScopeOut(Scope):
 
 @dataclass
 class ClientBase():
-    redirect_uris: typing.List[str]
-    response_types: typing.List[constants.ResponseType]
-    scopes: typing.List[str]
+    redirect_uris: List[str]
+    response_types: List[constants.ResponseType]
+    scopes: List[str]
 
 @dataclass
 class ClientUpsert(ClientBase):
     token_model_id: str
     id: str = field(default_factory=tools.generate_client_id)
     secret: str = field(default_factory=tools.generate_client_secret)
-    hashed_secret: typing.Optional[str] = field(init=False)
+    hashed_secret: str = field(init=False)
 
     def __post_init__(self) -> None:
         self.hashed_secret = tools.hash_secret(secret=self.secret)
     
-    def to_db_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_db_dict(self) -> Dict[str, Any]:
         self_dict = asdict(self)
-        self_dict["redirect_uris"] = " ".join(self.redirect_uris)
+        self_dict["redirect_uris"] = ",".join(self.redirect_uris)
         self_dict["response_types"] = ",".join([r.value for r in self.response_types])
         self_dict.pop("secret")
         return self_dict
@@ -225,7 +228,7 @@ class Client(ClientBase):
             hashed_password=self.hashed_secret.encode(constants.SECRET_ENCODING)
         )
     
-    def are_scopes_allowed(self, requested_scopes: typing.List[str]) -> bool:
+    def are_scopes_allowed(self, requested_scopes: List[str]) -> bool:
         return set(requested_scopes).issubset(set(self.scopes))
     
     def owns_redirect_uri(self, redirect_uri: str) -> bool:
@@ -260,7 +263,7 @@ class ClientOut(ClientBase):
 class GrantContext:
     client: Client
     token_model: TokenModel
-    requested_scopes: typing.List[str]
+    requested_scopes: List[str]
     authz_code: str | None
 
 @dataclass
@@ -268,8 +271,8 @@ class TokenResponse():
     access_token: str
     expires_in: int
     token_type: str = field(default=constants.BEARER_TOKEN_TYPE)
-    refresh_token: typing.Optional[str] = None
-    scope: typing.Optional[str] = None
+    refresh_token: str | None = None
+    scope: str | None = None
 
 ######################################## Session ########################################
 
@@ -281,16 +284,18 @@ class SessionInfo():
     callback_id: str | None
     client_id: str
     redirect_uri: str
-    requested_scopes: typing.List[str]
+    requested_scopes: List[str]
     state: str
+    auth_policy_id: str
     current_authn_step_id: str
     user_id: str | None
     authz_code: str | None
-    params: typing.Dict[str, typing.Any] = field(default_factory=dict)
+    params: Dict[str, Any] = field(default_factory=dict)
 
 ######################################## Auth Policy ########################################
 
-AUTHN_STEPS: typing.Dict[str, "AuthnStep"] = {}
+AUTHN_POLICIES: Dict[str, "AuthnPolicy"] = {}
+AUTHN_STEPS: Dict[str, "AuthnStep"] = {}
 
 @dataclass
 class AuthnStepResult():
@@ -328,9 +333,9 @@ class AuthnStepFailureResult(AuthnStepResult):
 @dataclass
 class AuthnStepSuccessResult(AuthnStepResult):
     status: constants.AuthnStatus = field(default=constants.AuthnStatus.SUCCESS, init=False)
-    _redirect_uri: str = field(default="", init=False)
-    _authz_code: str = field(default="", init=False)
-    _state: str = field(default="", init=False)
+    _redirect_uri: str = field(init=False)
+    _authz_code: str = field(init=False)
+    _state: str = field(init=False)
 
     def set_redirect_uri(self, redirect_uri) -> None:
         self._redirect_uri = redirect_uri
@@ -353,15 +358,15 @@ class AuthnStepSuccessResult(AuthnStepResult):
 @dataclass
 class AuthnStep():
     id: str
-    authn_func: typing.Callable[
+    authn_func: Callable[
         [
             SessionInfo,
             Request
         ],
-        AuthnStepResult | typing.Awaitable[AuthnStepResult]
+        AuthnStepResult | Awaitable[AuthnStepResult]
     ]
-    success_next_step: typing.Optional["AuthnStep"]
-    failure_next_step: typing.Optional["AuthnStep"]
+    success_next_step: Optional["AuthnStep"]
+    failure_next_step: Optional["AuthnStep"]
 
     def __post_init__(self) -> None:
         if(self.id in AUTHN_STEPS):
@@ -380,5 +385,12 @@ default_failure_step = AuthnStep(
 
 @dataclass
 class AuthnPolicy():
-    is_available: typing.Callable[[Client, Request], bool]
+    id: str
+    is_available: Callable[[Client, Request], bool]
     first_step: AuthnStep
+    get_extra_token_claims: Callable[[SessionInfo], Dict[str, str]] | None = None
+
+    def __post_init__(self) -> None:
+        if(self.id in AUTHN_POLICIES):
+            raise exceptions.AuthnPolicyAlreadyExistsException()
+        AUTHN_POLICIES[self.id] = self

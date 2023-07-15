@@ -55,7 +55,7 @@ async def get_valid_client(
             error=constants.ErrorCode.INVALID_SCOPE,
             error_description="the client does not have access to the required scopes"
         )
-    
+    # Check if the request_uri belongs to the client
     if(not client.owns_redirect_uri(redirect_uri=redirect_uri)):
         logger.info(f"The client with ID: {client.id} doesn't own the redict_uri: {redirect_uri}")
         raise exceptions.HTTPException(
@@ -63,6 +63,7 @@ async def get_valid_client(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="invalid redirect_uri"
         )
+    # Check if the requested response type is allowed for the client
     if(not client.is_response_type_allowed(response_type=response_type)):
         logger.info(f"The response type: {response_type} is not available to the client with ID: {client.id}")
         raise exceptions.HTTPException(
@@ -142,7 +143,8 @@ async def client_credentials_token_handler(
         client_id=client.id,
         subject=client.id,
         # If the client didn't inform any scopes, send all the available ones
-        scopes=grant_context.requested_scopes if grant_context.requested_scopes else client.scopes
+        scopes=grant_context.requested_scopes if grant_context.requested_scopes else client.scopes,
+        additional_claims={}
     )
     return schemas.TokenResponse(
         access_token=token.token,
@@ -175,11 +177,13 @@ async def authorization_code_token_handler(
             error_description="invalid authorization code"
         )
 
+    authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
     token_model: schemas.TokenModel = client.token_model
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
         subject=client.id,
-        scopes=session.requested_scopes
+        scopes=session.requested_scopes,
+        additional_claims=authn_policy.get_extra_token_claims(session) if authn_policy.get_extra_token_claims else {}
     )
     # Delete the session to make sure the authz code can no longer be used
     await auth_manager.session_manager.delete_session(session_id=session.id)
@@ -258,6 +262,8 @@ async def get_success_next_step(
         return next_step
     
     # When the next step for a success case is None, the policy finished successfully
+    if(session.user_id is None):
+        raise exceptions.PolicyFinishedWithoudMappingTheUserID()
     session.authz_code = tools.generate_authz_code()
     await auth_manager.session_manager.update_session(session_info=session)
     step_result.set_authz_code(session.authz_code)

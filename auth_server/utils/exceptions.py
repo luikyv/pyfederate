@@ -46,3 +46,9 @@ class AuthnStepAlreadyExistsException(Exception):
 
 class NoAuthenticationPoliciesAvailable(Exception):
     pass
+
+class AuthnPolicyAlreadyExistsException(Exception):
+    pass
+
+class PolicyFinishedWithoudMappingTheUserID(Exception):
+    pass

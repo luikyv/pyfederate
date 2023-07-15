@@ -59,7 +59,7 @@ class MockedSessionManager(SessionManager):
     
     async def create_session(self, session_info: schemas.SessionInfo) -> None:
 
-        if(session_info.tracking_id in self.sessions):
+        if(session_info.id in self.sessions):
             logger.info(f"The tracking ID: {session_info.tracking_id} has already an associated session")
             raise exceptions.ScopeAlreadyExists()
         
@@ -67,7 +67,7 @@ class MockedSessionManager(SessionManager):
     
     async def update_session(self, session_info: schemas.SessionInfo) -> None:
         
-        if(session_info not in self.sessions):
+        if(session_info.id not in self.sessions):
             raise exceptions.SessionInfoDoesNotExist()
 
         self.sessions[session_info.id] = session_info

@@ -75,7 +75,9 @@ class OLTPClientManager(ClientManager):
         with Session(self.engine) as db:
             
             client_db = models.Client(**client.to_db_dict())
-            scopes_db: typing.List[models.Scope] = db.query(models.Scope).filter(models.Scope.name.in_(client.scopes)).all()
+            scopes_db: typing.List[models.Scope] = db.query(models.Scope).filter(
+                models.Scope.name.in_(client.scopes)
+            ).all()
             client_db.scopes = scopes_db
             
             db.add(client_db)
