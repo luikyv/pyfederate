@@ -17,6 +17,14 @@ class SessionManager(ABC):
             exceptions.SessionInfoAlreadyExists
         """
         pass
+
+    @abstractmethod
+    async def update_session(self, session_info: schemas.SessionInfo) -> None:
+        """
+        Throws:
+            exceptions.SessionInfoDoesNotExist
+        """
+        pass
     
     @abstractmethod
     async def get_session_by_authz_code(self, authz_code: str) -> schemas.SessionInfo:
@@ -55,7 +63,14 @@ class MockedSessionManager(SessionManager):
             logger.info(f"The tracking ID: {session_info.tracking_id} has already an associated session")
             raise exceptions.ScopeAlreadyExists()
         
-        self.sessions[session_info.tracking_id] = session_info
+        self.sessions[session_info.id] = session_info
+    
+    async def update_session(self, session_info: schemas.SessionInfo) -> None:
+        
+        if(session_info not in self.sessions):
+            raise exceptions.SessionInfoDoesNotExist()
+        
+        self.sessions[session_info.id] = session_info
     
     async def get_session_by_authz_code(self, authz_code: str) -> schemas.SessionInfo:
         filtered_sessions: typing.List[schemas.SessionInfo] = list(filter(

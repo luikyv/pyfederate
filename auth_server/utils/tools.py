@@ -39,6 +39,9 @@ def generate_callback_id() -> str:
 def generate_authz_code() -> str:
     return generate_fixed_size_random_string(constants.AUTHORIZATION_CODE_LENGTH)
 
+def generate_session_id() -> str:
+    return generate_fixed_size_random_string(constants.SESSION_ID_LENGTH)
+
 def hash_secret(secret: str) -> str:
     return bcrypt.hashpw(
         secret.encode(constants.SECRET_ENCODING),

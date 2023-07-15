@@ -275,6 +275,7 @@ class TokenResponse():
 
 @dataclass
 class SessionInfo():
+    id: str
     tracking_id: str
     correlation_id: str
     callback_id: str | None
@@ -357,7 +358,7 @@ class AuthnStep():
             SessionInfo,
             Request
         ],
-        typing.Awaitable[AuthnStepResult]
+        AuthnStepResult | typing.Awaitable[AuthnStepResult]
     ]
     success_next_step: typing.Optional["AuthnStep"]
     failure_next_step: typing.Optional["AuthnStep"]
@@ -369,7 +370,7 @@ class AuthnStep():
 
 async def default_failure_authn_func(session: SessionInfo, request: Request) -> AuthnStepResult:
     return AuthnStepFailureResult(error_description="access denied")
-# TODO: Solve awaitable vs callable
+
 default_failure_step = AuthnStep(
     id="default_failure_step_42",
     authn_func=default_failure_authn_func,
@@ -379,5 +380,5 @@ default_failure_step = AuthnStep(
 
 @dataclass
 class AuthnPolicy():
-    is_available: typing.Callable[[], bool]
+    is_available: typing.Callable[[Client, Request], bool]
     first_step: AuthnStep

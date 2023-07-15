@@ -63,9 +63,9 @@ class AuthManager():
     def register_authn_policy(self, authn_policy: schemas.AuthnPolicy) -> None:
         self.authn_policies.append(authn_policy)
     
-    def pick_policy(self) -> schemas.AuthnPolicy:
+    def pick_policy(self, client: schemas.Client, request: Request) -> schemas.AuthnPolicy:
         available_policies: List[schemas.AuthnPolicy] = list(filter(
-            lambda policy: policy.is_available(),
+            lambda policy: policy.is_available(client, request),
             self.authn_policies
         ))
         if(len(available_policies) == 0):

@@ -48,12 +48,11 @@ async def authorize(
     scope: Annotated[str, Query()],
     state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
     request: Request,
-    response: Response,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):
     
     try:
-        authn_first_step: schemas.AuthnStep = auth_manager.pick_policy().first_step
+        authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(client=client, request=request)
         logger.info(f"Policy retrieved")
     except exceptions.NoAuthenticationPoliciesAvailable:
         logger.error(f"No authentication policy found for client with ID: {client.id}")
@@ -64,6 +63,7 @@ async def authorize(
         )
     
     session = schemas.SessionInfo(
+        id=tools.generate_session_id(),
         tracking_id=telemetry.tracking_id.get(),
         correlation_id=telemetry.correlation_id.get(),
         callback_id=tools.generate_callback_id(),
@@ -71,13 +71,13 @@ async def authorize(
         client_id=client.id,
         redirect_uri=redirect_uri,
         state=state,
-        current_authn_step_id=authn_first_step.id,
+        current_authn_step_id=authn_policy.first_step.id,
         requested_scopes=scope.split(" "),
         authz_code=None
     )
     await auth_manager.session_manager.create_session(session_info=session)
 
-    return await helpers.manage_authentication(session, request, response)
+    return await helpers.manage_authentication(session, request)
 
 
 @router.post(
@@ -87,6 +87,5 @@ async def authorize(
 async def callback_authorize(
     session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)],
     request: Request,
-    response: Response,
 ):
-    return await helpers.manage_authentication(session, request, response)
+    return await helpers.manage_authentication(session, request)

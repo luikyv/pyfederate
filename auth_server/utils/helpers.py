@@ -210,6 +210,7 @@ async def get_in_progress_next_step(
     # Update the session to indicate the processing
     # stopped at the current step
     session.current_authn_step_id = current_step.id
+    await auth_manager.session_manager.update_session(session_info=session)
 
     # Since the current status is IN_PROGRESS,
     # return None to indicate the partial processing finished
@@ -228,12 +229,13 @@ async def get_failure_next_step(
         raise RuntimeError()
 
     next_step = current_step.failure_next_step
+    if(next_step):
+        return next_step
+    
     # If the next step for a failure case is None, the policy failed
-    if(next_step is None):
-        step_result.set_redirect_uri(redirect_uri=session.redirect_uri)
-        await auth_manager.session_manager.delete_session(tracking_id=session.tracking_id)
-
-    return next_step
+    step_result.set_redirect_uri(redirect_uri=session.redirect_uri)
+    await auth_manager.session_manager.delete_session(tracking_id=session.tracking_id)
+    return None
 
 #################### Success ####################
 
@@ -248,14 +250,16 @@ async def get_success_next_step(
         raise RuntimeError()
     
     next_step = current_step.success_next_step
-    # If the next step for a success case is None, the policy finished successfully
-    if(next_step is None):
-        session.authz_code = tools.generate_authz_code()
-        step_result.set_authz_code(session.authz_code)
-        step_result.set_redirect_uri(redirect_uri=session.redirect_uri)
-        step_result.set_state(state=session.state)
-
-    return next_step
+    if(next_step):
+        return next_step
+    
+    # When the next step for a success case is None, the policy finished successfully
+    session.authz_code = tools.generate_authz_code()
+    await auth_manager.session_manager.update_session(session_info=session)
+    step_result.set_authz_code(session.authz_code)
+    step_result.set_redirect_uri(redirect_uri=session.redirect_uri)
+    step_result.set_state(state=session.state)
+    return None
 
 #################### Handler Object ####################
 
@@ -275,14 +279,14 @@ step_update_handler: Dict[
 async def manage_authentication(
     session: schemas.SessionInfo,
     request: Request,
-    response: Response
 ) -> Response:
     """Go through the available policy steps untill reach an end"""
     
     current_step: schemas.AuthnStep | None = schemas.AUTHN_STEPS.get(session.current_authn_step_id, schemas.default_failure_step)
     authn_result = None # type: ignore
     while(current_step):
-        authn_result: schemas.AuthnStepResult = await current_step.authn_func(session, request)
+        authn_result_ = current_step.authn_func(session, request)
+        authn_result: schemas.AuthnStepResult = await authn_result_ if inspect.isawaitable(authn_result_) else authn_result_ # type: ignore
         current_step = await step_update_handler[authn_result.status](
             session,
             current_step,

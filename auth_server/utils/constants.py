@@ -1,4 +1,4 @@
-import typing
+from typing import Dict, Literal, Annotated
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -61,6 +61,7 @@ CLIENT_ID_MAX_LENGH = 25
 CLIENT_SECRET_MIN_LENGH = 45
 CLIENT_SECRET_MAX_LENGH = 50
 CALLBACK_ID_LENGTH = 20
+SESSION_ID_LENGTH = 20
 AUTHORIZATION_CODE_LENGTH = 20
 STATE_PARAM_MAX_LENGTH = 100
 SECRET_ENCODING = "utf-8"
@@ -74,7 +75,7 @@ class JWKInfo:
 
 # Load the privates JWKs
 with open(os.path.join(os.path.dirname(__file__), "..", "..", "private_jwks.json"), "r") as f:
-    PRIVATE_JWKS: typing.Dict[
+    PRIVATE_JWKS: Dict[
         str, JWKInfo
     ] = {key["kid"]: JWKInfo(
         key_id=key["kid"],
@@ -82,5 +83,6 @@ with open(os.path.join(os.path.dirname(__file__), "..", "..", "private_jwks.json
         signing_algorithm=key["alg"]
     ) for key in json.load(f)["keys"]}
 
-JWK_IDS_LITERAL = typing.Literal[tuple(PRIVATE_JWKS.keys())] # type: ignore
-CORRELATION_ID_HEADER_TYPE = typing.Annotated[str | None, Header(alias=HTTPHeaders.X_CORRELATION_ID.name)]
+########## Type Hints ##########
+JWK_IDS_LITERAL = Literal[tuple(PRIVATE_JWKS.keys())] # type: ignore
+CORRELATION_ID_HEADER_TYPE = Annotated[str | None, Header(alias=HTTPHeaders.X_CORRELATION_ID.name)]
