@@ -3,9 +3,9 @@ import typing
 import bcrypt
 import jwt
 import time
-from pydantic import ValidationError
+from fastapi import Request, Response
 
-from . import constants
+from . import constants, exceptions
 from .constants import TokenClaim
 from .import tools
 
@@ -122,12 +122,9 @@ class TokenModelIn(TokenModel):
     key_id: typing.Optional[constants.JWK_IDS_LITERAL]
 
     def __post_init__(self) -> None:
-
-        if(self.token_type != constants.TokenType.JWT):
-            return
         
-        if(self.key_id is None):
-            raise ValidationError("JWT Token models must have a key_id and a signing_algorithm")
+        if(self.token_type == constants.TokenType.JWT and self.key_id is None):
+            raise ValueError("JWT Token models must have a key_id and a signing_algorithm")
 
 
     def to_upsert(self) -> TokenModelUpsert:
@@ -184,6 +181,7 @@ class ScopeOut(Scope):
 @dataclass
 class ClientBase():
     redirect_uris: typing.List[str]
+    response_types: typing.List[constants.ResponseType]
     scopes: typing.List[str]
 
 @dataclass
@@ -214,6 +212,7 @@ class Client(ClientBase):
             id=self.id,
             secret=self.secret,
             redirect_uris=self.redirect_uris,
+            response_types=self.response_types,
             scopes=self.scopes,
             token_model_id=self.token_model.id
         )
@@ -229,6 +228,9 @@ class Client(ClientBase):
     
     def owns_redirect_uri(self, redirect_uri: str) -> bool:
         return redirect_uri in self.redirect_uris
+    
+    def is_response_type_allowed(self, response_type: constants.ResponseType) -> bool:
+        return response_type in self.response_types
 
 #################### API Models ####################
 
@@ -238,8 +240,9 @@ class ClientIn(ClientBase):
 
     def to_upsert(self) -> ClientUpsert:
         return ClientUpsert(
-            scopes=self.scopes,
             redirect_uris=self.redirect_uris,
+            response_types=self.response_types,
+            scopes=self.scopes,
             token_model_id=self.token_model_id
         )
 
@@ -256,7 +259,7 @@ class GrantContext:
     client: Client
     token_model: TokenModel
     requested_scopes: typing.List[str]
-    auth_code: str | None
+    authz_code: str | None
 
 @dataclass
 class TokenResponse():
@@ -273,10 +276,39 @@ class SessionInfo():
     tracking_id: str
     correlation_id: str
     callback_id: str | None
-    subject: str | None
     client_id: str
     redirect_uri: str
-    state: str
     requested_scopes: typing.List[str]
-    auth_code: str | None
-    # params: typing.Dict[str, typing.Any] = field(default_factory=dict)
+    state: str
+    current_authn_step_id: str
+    user_id: str | None
+    authz_code: str | None
+    params: typing.Dict[str, typing.Any] = field(default_factory=dict)
+
+######################################## Auth Policy ########################################
+
+AUTHN_STEPS: typing.Dict[str, "AuthnStep"] = {}
+
+@dataclass
+class AuthnStep():
+    id: str
+    authn_func: typing.Callable[
+        [
+            SessionInfo,
+            Request,
+            Response
+        ],
+        typing.Awaitable[constants.AuthnStatus]
+    ]
+    success_next_step: typing.Optional["AuthnStep"]
+    failure_next_step: typing.Optional["AuthnStep"]
+
+    def __post_init__(self) -> None:
+        if(self.id in AUTHN_STEPS):
+            raise exceptions.AuthnStepAlreadyExistsException()
+        AUTHN_STEPS[self.id] = self
+
+@dataclass
+class AuthnPolicy():
+    is_available: typing.Callable[[], bool]
+    first_step: AuthnStep

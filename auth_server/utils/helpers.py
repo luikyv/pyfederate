@@ -1,8 +1,9 @@
 from typing import Annotated, Awaitable, Callable, Dict
-from fastapi import status, Query, Path
+from fastapi import status, Query, Path, Request, Response
+from fastapi.responses import RedirectResponse
 
-from ..utils import constants, telemetry, schemas, exceptions
-from .constants import GrantType
+from ..utils import constants, telemetry, schemas, tools, exceptions
+from .constants import GrantType, AuthnStatus, ErrorCode
 from ..auth_manager import manager as auth_manager
 
 logger = telemetry.get_logger(__name__)
@@ -28,6 +29,41 @@ async def get_client(
     
     return client
 
+async def get_valid_client(
+        client_id: Annotated[
+            str,
+            Path(min_length=constants.CLIENT_ID_MIN_LENGH, max_length=constants.CLIENT_ID_MAX_LENGH)
+        ],
+        response_type: Annotated[constants.ResponseType, Path()],
+        redirect_uri: Annotated[str, Path()],
+) -> schemas.Client:
+    try:
+        client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
+    except exceptions.ClientDoesNotExist:
+        logger.info(f"The client with ID: {client_id} does not exists")
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error=constants.ErrorCode.INVALID_CLIENT,
+            error_description="invalid credentials"
+        )
+    
+    if(not client.owns_redirect_uri(redirect_uri=redirect_uri)):
+        logger.info(f"The client with ID: {client.id} doesn't own the redict_uri: {redirect_uri}")
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid redirect_uri"
+        )
+    if(not client.is_response_type_allowed(response_type=response_type)):
+        logger.info(f"The response type: {response_type} is not available to the client with ID: {client.id}")
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid redirect_uri"
+        )
+    
+    return client
+
 async def get_authenticated_client(
         client_id: Annotated[
             str,
@@ -38,6 +74,7 @@ async def get_authenticated_client(
             Query(max_length=constants.CLIENT_SECRET_MIN_LENGH, min_length=constants.CLIENT_SECRET_MAX_LENGH)
         ]       
 ) -> schemas.Client:
+    """Get client and verify that its secret matches client_secret"""
     
     client: schemas.Client = await get_client(client_id=client_id)
 
@@ -109,15 +146,15 @@ async def authorization_code_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
     
-    if(grant_context.auth_code is None):
+    if(grant_context.authz_code is None):
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_GRANT,
             error_description="the authorization code cannot be null for the authorization_code grant"
         )
 
-    session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_auth_code(
-        auth_code=grant_context.auth_code
+    session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_authz_code(
+        authz_code=grant_context.authz_code
     )
     client: schemas.Client = grant_context.client
 
@@ -157,4 +194,51 @@ grant_handlers: Dict[
 ] = {
     GrantType.CLIENT_CREDENTIALS: client_credentials_token_handler,
     GrantType.AUTHORIZATION_CODE: authorization_code_token_handler
+}
+
+######################################## Authn Status Handlers ########################################
+
+#################### In Progress ####################
+
+def authn_failure_handler(
+    session: schemas.SessionInfo,
+    response: Response
+) -> Response:
+    return RedirectResponse(
+        url=tools.prepare_url(session.redirect_uri, {
+            "error": ErrorCode.ACCESS_DENIED.value,
+            "error_description": "access denied",
+        }),
+        status_code=status.HTTP_303_SEE_OTHER
+    )
+
+def authn_in_progress_handler(
+    session: schemas.SessionInfo,
+    response: Response
+) -> Response:
+    return response
+
+def authn_success_handler(
+    session: schemas.SessionInfo,
+    response: Response
+) -> Response:
+    session.authz_code = tools.generate_authz_code()
+    return RedirectResponse(
+        url=tools.prepare_url(session.redirect_uri, {
+            "code": session.authz_code,
+            "state": session.state,
+        }),
+        status_code=status.HTTP_303_SEE_OTHER
+    )
+
+authn_status_handlers: Dict[
+    AuthnStatus,
+    Callable[
+        [schemas.SessionInfo, Response],
+        Response
+    ]
+] = {
+    AuthnStatus.FAILURE: authn_failure_handler,
+    AuthnStatus.IN_PROGRESS: authn_in_progress_handler,
+    AuthnStatus.SUCCESS: authn_success_handler
 }

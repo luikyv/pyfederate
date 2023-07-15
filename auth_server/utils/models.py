@@ -54,6 +54,7 @@ class Client(Base):
     id: Mapped[str] = mapped_column(String(50), primary_key=True)
     hashed_secret: Mapped[str] = mapped_column(String(100))
     redirect_uris: Mapped[str] = mapped_column(String(1000))
+    response_types: Mapped[str] = mapped_column(String(100))
     scopes: Mapped[typing.List[Scope]] = relationship(
         secondary=Table(
             "client_scope",
@@ -73,6 +74,7 @@ class Client(Base):
             secret=secret,
             hashed_secret=self.hashed_secret,
             redirect_uris=self.redirect_uris.split(" "),
+            response_types=[constants.ResponseType(response_type) for response_type in self.response_types.split()],
             scopes=[scope.name for scope in self.scopes],
             token_model=self.token_model.to_schema()
         )

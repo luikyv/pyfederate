@@ -34,7 +34,7 @@ def generate_client_secret() -> str:
 def generate_callback_id() -> str:
     return generate_fixed_size_random_string(constants.CALLBACK_ID_LENGTH)
 
-def generate_auth_code() -> str:
+def generate_authz_code() -> str:
     return generate_fixed_size_random_string(constants.AUTHORIZATION_CODE_LENGTH)
 
 def hash_secret(secret: str) -> str:

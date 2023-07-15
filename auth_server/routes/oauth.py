@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Query, Path, Depends
+from fastapi import APIRouter, status, Query, Path, Depends, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..auth_manager import manager as auth_manager
@@ -32,7 +32,7 @@ async def get_token(
         client=client,
         token_model=client.token_model,
         requested_scopes=requested_scopes,
-        auth_code=code
+        authz_code=code
     )
 
     return await helpers.grant_handlers[grant_type](
@@ -41,58 +41,67 @@ async def get_token(
 
 @router.get(
     "/authorize",
-    response_class=HTMLResponse,
     status_code=status.HTTP_200_OK
 )
 async def authorize(
-    client: Annotated[schemas.Client, Depends(helpers.get_client)],
-    response_type: Annotated[constants.ResponseType, Path()],
-    redirect_uri: Annotated[str, Path()],
+    client: Annotated[schemas.Client, Depends(helpers.get_valid_client)],
+    redirect_uri: Annotated[str, Path()], # This redirect_uri is already validated when creating the client
     scope: Annotated[str, Path()],
     state: Annotated[str, Path(max_length=constants.STATE_PARAM_MAX_LENGTH)],
+    request: Request,
+    response: Response,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
-) -> str:
+):
     
-    if(not client.owns_redirect_uri(redirect_uri=redirect_uri)):
-        logger.info(f"The client with ID: {client.id} doesn't own the redict_uri: {redirect_uri}")
+    try:
+        authn_first_step: schemas.AuthnStep = auth_manager.pick_policy().first_step
+    except exceptions.NoAuthenticationPoliciesAvailable:
+        logger.info(f"No authentication policy found for client with ID: {client.id}")
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="invalid redirect_uri"
+            error_description="no policy found"
         )
     
     callback_id: str = tools.generate_callback_id()
-    await auth_manager.session_manager.create_session(
-        schemas.SessionInfo(
-            tracking_id=telemetry.tracking_id.get(),
-            correlation_id=telemetry.correlation_id.get(),
-            callback_id=callback_id,
-            subject=None,
-            client_id=client.id,
-            redirect_uri=redirect_uri,
-            state=state,
-            requested_scopes=scope.split(" "),
-            auth_code=None
-        )
+    session = schemas.SessionInfo(
+        tracking_id=telemetry.tracking_id.get(),
+        correlation_id=telemetry.correlation_id.get(),
+        callback_id=callback_id,
+        user_id=None,
+        client_id=client.id,
+        redirect_uri=redirect_uri,
+        state=state,
+        current_authn_step_id=authn_first_step.id,
+        requested_scopes=scope.split(" "),
+        authz_code=None
     )
+    await auth_manager.session_manager.create_session(session_info=session)
+
+    authn_status: constants.AuthnStatus = await authn_first_step.authn_func(session, request, response)
+    return helpers.authn_status_handlers[authn_status](
+        session,
+        response
+    )
+
     
-    return f"""
-            <form action="/authorize/{callback_id}" method="post">
-            <input type="submit" value="Submit">
-            </form>
-        """
+    # return f"""
+    #         <form action="/authorize/{callback_id}" method="post">
+    #         <input type="submit" value="Submit">
+    #         </form>
+    #        """
 
 @router.post(
     "/authorize/{callback_id}",
 )
 async def callback_authorize(
-    session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)]
+    session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)],
+    request: Request,
+    response: Response,
 ):
-    session.auth_code = tools.generate_auth_code()
-    return RedirectResponse(
-        url=tools.prepare_url(session.redirect_uri, {
-            "code": session.auth_code,
-            "state": session.state,
-        }),
-        status_code=status.HTTP_303_SEE_OTHER
+    authn_step: schemas.AuthnStep = schemas.AUTHN_STEPS[session.current_authn_step_id]
+    authn_status: constants.AuthnStatus = await authn_step.authn_func(session, request, response)
+    return helpers.authn_status_handlers[authn_status](
+        session,
+        response
     )

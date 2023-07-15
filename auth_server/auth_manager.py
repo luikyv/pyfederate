@@ -1,3 +1,4 @@
+from typing import List
 import uvicorn
 from fastapi import FastAPI
 import asyncio
@@ -6,7 +7,7 @@ from .utils.managers.token_manager import TokenModelManager
 from .utils.managers.scope_manager import ScopeManager
 from .utils.managers.client_manager import ClientManager
 from .utils.managers.session_manager import SessionManager
-from .utils import constants
+from .utils import constants, schemas, exceptions
 
 class AuthManager():
 
@@ -17,7 +18,8 @@ class AuthManager():
         self._scope_manager: ScopeManager | None = None
         self._client_manager: ClientManager | None = None
         self._session_manager: SessionManager | None = None
-    
+        self.authn_policies: List[schemas.AuthnPolicy] = []
+
     @property
     def token_model_manager(self) -> TokenModelManager:
         if(self._token_model_manager is None): raise RuntimeError()
@@ -57,6 +59,28 @@ class AuthManager():
     def session_manager(self, session_manager: SessionManager) -> None:
         if(self._session_manager is not None): raise RuntimeError()
         self._session_manager = session_manager
+    
+    def register_authn_policy(self, authn_policy: schemas.AuthnPolicy) -> None:
+        self.authn_policies.append(authn_policy)
+    
+    def pick_policy(self) -> schemas.AuthnPolicy:
+        available_policies: List[schemas.AuthnPolicy] = list(filter(
+            lambda policy: policy.is_available(),
+            self.authn_policies
+        ))
+        if(len(available_policies) == 0):
+            raise exceptions.NoAuthenticationPoliciesAvailable()
+        
+        return available_policies[0]
+    
+    async def authenticate(self, callback_id: str) -> None:
+        session: schemas.SessionInfo = await self.session_manager.get_session_by_callback_id(
+            callback_id=callback_id
+        )
+        authn_step: schemas.AuthnStep = schemas.AUTHN_STEPS[session.current_authn_step_id]
+
+        return None
+
     
     def is_ready(self) -> bool:
         return (

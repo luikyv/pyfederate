@@ -19,7 +19,7 @@ class SessionManager(ABC):
         pass
     
     @abstractmethod
-    async def get_session_by_auth_code(self, auth_code: str) -> schemas.SessionInfo:
+    async def get_session_by_authz_code(self, authz_code: str) -> schemas.SessionInfo:
         """
         Throws:
             exceptions.SessionInfoDoesNotExist
@@ -57,12 +57,12 @@ class MockedSessionManager(SessionManager):
         
         self.sessions[session_info.tracking_id] = session_info
     
-    async def get_session_by_auth_code(self, auth_code: str) -> schemas.SessionInfo:
+    async def get_session_by_authz_code(self, authz_code: str) -> schemas.SessionInfo:
         filtered_sessions: typing.List[schemas.SessionInfo] = list(filter(
-            lambda session_info: session_info.auth_code == auth_code, self.sessions.values()
+            lambda session_info: session_info.authz_code == authz_code, self.sessions.values()
         ))
         if(len(filtered_sessions) != 1):
-            logger.info(f"The authorization code: {auth_code} has no associated session")
+            logger.info(f"The authorization code: {authz_code} has no associated session")
             raise exceptions.SessionInfoDoesNotExist()
         
         return filtered_sessions[0]

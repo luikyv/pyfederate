@@ -46,6 +46,11 @@ class ErrorCode(Enum):
     INVALID_GRANT = "invalid_grant"
     INVALID_SCOPE = "invalid_scope"
 
+class AuthnStatus(Enum):
+    SUCCESS = "success"
+    IN_PROGRESS = "in_progress"
+    FAILURE = "failure"
+
 ########## Configurations ##########
 
 LOG_LEVEL = logging.DEBUG

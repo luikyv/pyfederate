@@ -40,3 +40,9 @@ class SessionInfoAlreadyExists(Exception):
 
 class SessionInfoDoesNotExist(Exception):
     pass
+
+class AuthnStepAlreadyExistsException(Exception):
+    pass
+
+class NoAuthenticationPoliciesAvailable(Exception):
+    pass
