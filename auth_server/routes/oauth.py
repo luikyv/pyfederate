@@ -1,6 +1,5 @@
 from typing import Annotated, List
 from fastapi import APIRouter, status, Query, Depends, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..auth_manager import manager as auth_manager
 from ..utils.constants import GrantType
@@ -83,7 +82,7 @@ async def authorize(
 
 @router.post(
     "/authorize/{callback_id}",
-    response_class=HTMLResponse
+    status_code=status.HTTP_200_OK
 )
 async def callback_authorize(
     session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)],

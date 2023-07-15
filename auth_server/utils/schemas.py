@@ -3,10 +3,11 @@ import typing
 import bcrypt
 import jwt
 import time
-from fastapi import Request, Response
+from fastapi import Request, Response, status
+from fastapi.responses import RedirectResponse
 
 from . import constants, exceptions
-from .constants import TokenClaim
+from .constants import TokenClaim, ErrorCode
 from .import tools
 
 ######################################## Token ########################################
@@ -291,15 +292,72 @@ class SessionInfo():
 AUTHN_STEPS: typing.Dict[str, "AuthnStep"] = {}
 
 @dataclass
+class AuthnStepResult():
+    status: constants.AuthnStatus
+
+    def get_response(self) -> Response:
+        raise NotImplementedError()
+
+@dataclass
+class AuthnStepInProgressResult(AuthnStepResult):
+    response: Response
+    status: constants.AuthnStatus = field(default=constants.AuthnStatus.IN_PROGRESS, init=False)
+
+    def get_response(self) -> Response:
+        return self.response
+
+@dataclass
+class AuthnStepFailureResult(AuthnStepResult):
+    error_description: str
+    status: constants.AuthnStatus = field(default=constants.AuthnStatus.FAILURE, init=False)
+    _redirect_uri: str = field(default="", init=False)
+
+    def set_redirect_uri(self, redirect_uri) -> None:
+        self._redirect_uri = redirect_uri
+
+    def get_response(self) -> Response:
+        return RedirectResponse(
+            url=tools.prepare_redirect_url(self._redirect_uri, {
+                "error": ErrorCode.ACCESS_DENIED.value,
+                "error_description": self.error_description,
+            }),
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+
+@dataclass
+class AuthnStepSuccessResult(AuthnStepResult):
+    status: constants.AuthnStatus = field(default=constants.AuthnStatus.SUCCESS, init=False)
+    _redirect_uri: str = field(default="", init=False)
+    _authz_code: str = field(default="", init=False)
+    _state: str = field(default="", init=False)
+
+    def set_redirect_uri(self, redirect_uri) -> None:
+        self._redirect_uri = redirect_uri
+
+    def set_authz_code(self, authz_code: str) -> None:
+        self._authz_code = authz_code
+    
+    def set_state(self, state: str) -> None:
+        self._state = state
+
+    def get_response(self) -> Response:
+        return RedirectResponse(
+            url=tools.prepare_redirect_url(self._redirect_uri, {
+                "code": self._authz_code,
+                "state": self._state,
+            }),
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+
+@dataclass
 class AuthnStep():
     id: str
     authn_func: typing.Callable[
         [
             SessionInfo,
-            Request,
-            Response
+            Request
         ],
-        typing.Awaitable[constants.AuthnStatus]
+        typing.Awaitable[AuthnStepResult]
     ]
     success_next_step: typing.Optional["AuthnStep"]
     failure_next_step: typing.Optional["AuthnStep"]
@@ -308,6 +366,16 @@ class AuthnStep():
         if(self.id in AUTHN_STEPS):
             raise exceptions.AuthnStepAlreadyExistsException()
         AUTHN_STEPS[self.id] = self
+
+async def default_failure_authn_func(session: SessionInfo, request: Request) -> AuthnStepResult:
+    return AuthnStepFailureResult(error_description="access denied")
+# TODO: Solve awaitable vs callable
+default_failure_step = AuthnStep(
+    id="default_failure_step_42",
+    authn_func=default_failure_authn_func,
+    success_next_step=None,
+    failure_next_step=None
+)
 
 @dataclass
 class AuthnPolicy():
