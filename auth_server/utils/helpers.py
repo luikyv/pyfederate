@@ -1,9 +1,9 @@
-from typing import Annotated, Awaitable, Callable, Dict, List
+from typing import Annotated, Awaitable, Callable, Dict
 from fastapi import status, Query, Path, Request, Response
 import inspect
 
 from ..utils import constants, telemetry, schemas, tools, exceptions
-from .constants import GrantType, AuthnStatus, ErrorCode
+from .constants import GrantType, AuthnStatus
 from ..auth_manager import manager as auth_manager
 
 logger = telemetry.get_logger(__name__)
@@ -164,10 +164,13 @@ async def authorization_code_token_handler(
             error_description="the authorization code cannot be null for the authorization_code grant"
         )
     
+    client: schemas.Client = grant_context.client
     session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_authz_code(
         authz_code=grant_context.authz_code
     )
-    client: schemas.Client = grant_context.client
+    # Set the telemetry IDs as the ones store previously in the session
+    telemetry.tracking_id.set(session.tracking_id)
+    telemetry.correlation_id.set(session.correlation_id)
 
     # Ensure the client is the same one defined in the session
     if(client.id != session.client_id):
@@ -176,12 +179,19 @@ async def authorization_code_token_handler(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="invalid authorization code"
         )
+    # Ensure the redirect uri passed during the /authorize step is the same passed in the /token
+    if(grant_context.redirect_uri is None or grant_context.redirect_uri != session.redirect_uri):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid redirect uri"
+        )
     # Ensure the user id is defined in the session
     if(session.user_id is None):
         raise exceptions.HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.ACCESS_DENIED,
-            error_description="internal server error"
+            error_description="access denied"
         )
 
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]

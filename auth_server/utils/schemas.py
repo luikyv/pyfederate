@@ -268,6 +268,7 @@ class GrantContext:
     client: Client
     token_model: TokenModel
     requested_scopes: List[str]
+    redirect_uri: str | None
     authz_code: str | None
 
 @dataclass

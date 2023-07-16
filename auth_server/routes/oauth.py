@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Query, Depends, Request, Response
+from fastapi import APIRouter, status, Query, Depends, Request
 
 from ..auth_manager import manager as auth_manager
 from ..utils.constants import GrantType
@@ -22,6 +22,7 @@ async def get_token(
     grant_type: Annotated[GrantType, Query()],
     code: Annotated[str | None, Query()] = None,
     scope: Annotated[str | None, Query()] = None,
+    redirect_uri: Annotated[str | None, Query()] = None,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):
     logger.info(f"Client {client.id} started the grant {grant_type.value}")
@@ -31,6 +32,7 @@ async def get_token(
         client=client,
         token_model=client.token_model,
         requested_scopes=requested_scopes,
+        redirect_uri=redirect_uri,
         authz_code=code
     )
 
@@ -89,5 +91,6 @@ async def authorize(
 async def callback_authorize(
     session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)],
     request: Request,
+    _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):
     return await helpers.manage_authentication(session, request)
