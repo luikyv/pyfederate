@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from sqlalchemy import delete, Engine
 from sqlalchemy.orm import Session
 
-from .. import schemas, models, exceptions
+from .. import schemas, models, constants, exceptions
 
 ######################################## Interfaces ########################################
 
@@ -41,6 +41,44 @@ class TokenModelManager(ABC):
         pass
 
 ######################################## Implementations ########################################
+
+#################### Mock ####################
+
+class MockedTokenModelManager(TokenModelManager):
+
+    def __init__(self) -> None:
+        self.token_models: typing.Dict[str, schemas.TokenModel] = {}
+
+    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
+        if(token_model.id in self.token_models):
+            raise exceptions.TokenModelAlreadyExists()
+        
+        if(token_model.token_type == constants.TokenType.JWT):
+            self.token_models[token_model.id] = schemas.JWTTokenModel(
+                id=token_model.id,
+                issuer=token_model.issuer,
+                expires_in=token_model.expires_in,
+                key_id=token_model.key_id, # type: ignore
+                key=constants.PRIVATE_JWKS[token_model.key_id].key, # type: ignore
+                signing_algorithm=constants.SigningAlgorithm(constants.PRIVATE_JWKS[token_model.key_id].signing_algorithm), # type: ignore
+            )
+        return self.token_models[token_model.id]
+
+    async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
+        if(token_model_id not in self.token_models):
+            raise exceptions.TokenModelDoesNotExist()
+        return self.token_models[token_model_id]
+    
+    async def get_token_models(self) -> typing.List[schemas.TokenModel]:
+        return list(self.token_models.values())
+    
+    async def get_model_key_ids(self) -> typing.List[str]:
+        return [token_model.key_id for token_model in self.token_models if isinstance(token_model, schemas.JWTTokenModel)]
+    
+    async def delete_token_model(self, token_model_id: str) -> None:
+        self.token_models.pop(token_model_id)
+
+#################### OLTP ####################
 
 class OLTPTokenModelManager(TokenModelManager):
 

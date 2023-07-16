@@ -44,6 +44,36 @@ class ScopeManager(ABC):
 
 ######################################## Implementations ########################################
 
+#################### Mock ####################
+
+class MockedScopeManager(ScopeManager):
+
+    def __init__(self) -> None:
+        self.scopes: typing.Dict[str, schemas.Scope] = {}
+
+    async def create_scope(self, scope: schemas.ScopeUpsert) -> None:
+        if(scope.name in self.scopes):
+            raise exceptions.ScopeAlreadyExists()
+        self.scopes[scope.name] = schemas.Scope(**asdict(scope))
+    
+    async def update_scope(self, scope: schemas.ScopeUpsert) -> None:
+        if(scope.name not in self.scopes):
+            raise exceptions.ScopeDoesNotExist()
+        self.scopes[scope.name] = schemas.Scope(**asdict(scope))
+    
+    async def get_scope(self, scope_name: str) -> schemas.Scope:
+        if(scope_name not in self.scopes):
+            raise exceptions.ScopeDoesNotExist()
+        return self.scopes[scope_name]
+
+    async def get_scopes(self) -> typing.List[schemas.Scope]:
+        return list(self.scopes.values())
+    
+    async def delete_scope(self, scope_name: str) -> None:
+        self.scopes.pop(scope_name)
+
+#################### OLTP ####################
+
 class OLTPScopeManager(ScopeManager):
 
     def __init__(self, engine: Engine) -> None:

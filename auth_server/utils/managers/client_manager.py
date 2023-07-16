@@ -5,10 +5,8 @@ from sqlalchemy.orm import Session
 import typing
 from abc import ABC, abstractmethod
 
-from ..tools import hash_secret
-from .. import models
-from .. import schemas
-from .. import exceptions
+from .. import models, schemas, exceptions
+from .token_manager import TokenModelManager
 
 ######################################## Interfaces ########################################
 
@@ -23,7 +21,7 @@ class ClientManager(ABC):
         pass
 
     @abstractmethod
-    async def update_client(self, client: schemas.Client) -> schemas.Client:
+    async def update_client(self, client: schemas.ClientUpsert) -> schemas.Client:
         """
         Throws:
             exceptions.ClientDoesNotExist
@@ -48,22 +46,39 @@ class ClientManager(ABC):
 
 ######################################## Implementations ########################################
 
-class MockedClientManager(ClientManager):
+#################### Mock ####################
 
-    def __init__(self,) -> None:
+class MockedClientManager(ClientManager):
+    
+    def __init__(self, token_manager: TokenModelManager) -> None:
+        self.token_manager = token_manager
         self.clients: typing.Dict[str, schemas.Client] = {}
 
     async def create_client(self, client: schemas.ClientUpsert) -> None:
-        self.clients[client.id] = schemas.Client(**asdict(client), hashed_secret=hash_secret(secret=client.secret))
+        
+        self.clients[client.id] = schemas.Client(
+            id=client.id,
+            redirect_uris=client.redirect_uris,
+            response_types=client.response_types,
+            scopes=client.scopes,
+            token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
+            hashed_secret=client.hashed_secret,
+            secret=None
+        )
 
-    async def update_client(self, client: schemas.Client) -> None:
-        self.clients[client.id] = client
+    async def update_client(self, client: schemas.ClientUpsert) -> None:
+        raise RuntimeError()
     
     async def get_client(self, client_id: str) -> schemas.Client:
         return self.clients[client_id]
     
+    async def get_clients(self) -> typing.List[schemas.Client]:
+        return list(self.clients.values())
+    
     async def delete_client(self, client_id: str) -> None:
         self.clients.pop(client_id)
+
+#################### OLTP ####################
 
 class OLTPClientManager(ClientManager):
 
@@ -85,7 +100,7 @@ class OLTPClientManager(ClientManager):
         
             return client_db.to_schema(secret=client.secret)
 
-    async def update_client(self, client: schemas.Client) -> schemas.Client:
+    async def update_client(self, client: schemas.ClientUpsert) -> schemas.Client:
         raise RuntimeError()
     
     async def get_client(self, client_id: str) -> schemas.Client:

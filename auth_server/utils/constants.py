@@ -29,7 +29,6 @@ class ResponseType(Enum):
 
 class TokenType(Enum):
     JWT = "jwt"
-    OPAQUE = "opaque"
 
 class TokenClaim(Enum):
     AUDIENCE = "aud"

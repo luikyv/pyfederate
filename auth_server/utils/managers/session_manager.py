@@ -93,5 +93,5 @@ class MockedSessionManager(SessionManager):
         
         return filtered_sessions[0]
 
-    async def delete_session(self, tracking_id: str) -> None:
-        self.sessions.pop(tracking_id)
+    async def delete_session(self, session_id: str) -> None:
+        self.sessions.pop(session_id)

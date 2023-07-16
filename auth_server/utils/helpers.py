@@ -163,7 +163,7 @@ async def authorization_code_token_handler(
             error=constants.ErrorCode.INVALID_GRANT,
             error_description="the authorization code cannot be null for the authorization_code grant"
         )
-
+    
     session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_authz_code(
         authz_code=grant_context.authz_code
     )
@@ -176,12 +176,19 @@ async def authorization_code_token_handler(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="invalid authorization code"
         )
+    # Ensure the user id is defined in the session
+    if(session.user_id is None):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error=constants.ErrorCode.ACCESS_DENIED,
+            error_description="internal server error"
+        )
 
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
     token_model: schemas.TokenModel = client.token_model
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
-        subject=client.id,
+        subject=session.user_id,
         scopes=session.requested_scopes,
         additional_claims=authn_policy.get_extra_token_claims(session) if authn_policy.get_extra_token_claims else {}
     )

@@ -71,6 +71,10 @@ class TokenModelUpsert(TokenModel):
         
         self_dict["token_type"] = self.token_type.value
         return self_dict
+    
+    def __post_init__(self) -> None:
+        if(self.token_type == constants.TokenType.JWT and self.key_id is None):
+            raise ValueError("JWT tokens must be associated to a key")
 
 @dataclass
 class JWTTokenModel(TokenModel):
