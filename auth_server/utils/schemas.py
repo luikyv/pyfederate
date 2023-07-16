@@ -195,8 +195,8 @@ class ClientBase():
 @dataclass
 class ClientUpsert(ClientBase):
     token_model_id: str
-    id: str = field(default_factory=tools.generate_client_id)
-    secret: str = field(default_factory=tools.generate_client_secret)
+    id: str = field(default_factory=tools.generate_client_id, init=False)
+    secret: str = field(default_factory=tools.generate_client_secret, init=False)
     hashed_secret: str = field(init=False)
 
     def __post_init__(self) -> None:

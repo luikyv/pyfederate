@@ -4,7 +4,9 @@ from abc import ABC, abstractmethod
 from sqlalchemy import delete, Engine
 from sqlalchemy.orm import Session
 
-from .. import schemas, models, constants, exceptions
+from .. import schemas, models, constants, telemetry, exceptions
+
+logger = telemetry.get_logger(__name__)
 
 ######################################## Interfaces ########################################
 
@@ -51,6 +53,7 @@ class MockedTokenModelManager(TokenModelManager):
 
     async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
         if(token_model.id in self.token_models):
+            logger.info(f"Token model with ID: {token_model.id} already exists")
             raise exceptions.TokenModelAlreadyExists()
         
         if(token_model.token_type == constants.TokenType.JWT):
@@ -65,8 +68,11 @@ class MockedTokenModelManager(TokenModelManager):
         return self.token_models[token_model.id]
 
     async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
+
         if(token_model_id not in self.token_models):
+            logger.info(f"Token model with ID: {token_model_id} does not exist")
             raise exceptions.TokenModelDoesNotExist()
+        
         return self.token_models[token_model_id]
     
     async def get_token_models(self) -> typing.List[schemas.TokenModel]:

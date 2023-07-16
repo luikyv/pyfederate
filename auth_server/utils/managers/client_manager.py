@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 import typing
 from abc import ABC, abstractmethod
 
-from .. import models, schemas, exceptions
+from .. import models, schemas, telemetry, exceptions
 from .token_manager import TokenModelManager
+
+logger = telemetry.get_logger(__name__)
 
 ######################################## Interfaces ########################################
 
@@ -55,6 +57,10 @@ class MockedClientManager(ClientManager):
         self.clients: typing.Dict[str, schemas.Client] = {}
 
     async def create_client(self, client: schemas.ClientUpsert) -> None:
+
+        if(client.id in self.clients):
+            logger.info(f"Client with ID: {client.id} already exists")
+            raise exceptions.ClientAlreadyExists()
         
         self.clients[client.id] = schemas.Client(
             id=client.id,
@@ -67,9 +73,27 @@ class MockedClientManager(ClientManager):
         )
 
     async def update_client(self, client: schemas.ClientUpsert) -> None:
-        raise RuntimeError()
+        
+        if(client.id not in self.clients):
+            logger.info(f"Client with ID: {client.id} does not exist")
+            raise exceptions.ClientDoesNotExist()
+        
+        self.clients[client.id] = schemas.Client(
+            id=client.id,
+            redirect_uris=client.redirect_uris,
+            response_types=client.response_types,
+            scopes=client.scopes,
+            token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
+            hashed_secret=client.hashed_secret,
+            secret=None
+        )
     
     async def get_client(self, client_id: str) -> schemas.Client:
+        
+        if(client_id not in self.clients):
+            logger.info(f"Client with ID: {client_id} does not exist")
+            raise exceptions.ClientDoesNotExist()
+
         return self.clients[client_id]
     
     async def get_clients(self) -> typing.List[schemas.Client]:

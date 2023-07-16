@@ -38,15 +38,8 @@ async def get_valid_client(
         response_type: Annotated[constants.ResponseType, Query()],
         redirect_uri: Annotated[str, Query()],
 ) -> schemas.Client:
-    try:
-        client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
-    except exceptions.ClientDoesNotExist:
-        logger.info(f"The client with ID: {client_id} does not exists")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            error=constants.ErrorCode.INVALID_CLIENT,
-            error_description="invalid credentials"
-        )
+    
+    client: schemas.Client = await get_client(client_id=client_id)
     
     # Check if the scopes requested are available to the client
     if(not client.are_scopes_allowed(requested_scopes=scope.split(" "))):
@@ -153,10 +146,32 @@ async def client_credentials_token_handler(
 
 #################### Authorization Code ####################
 
-async def authorization_code_token_handler(
-    grant_context: schemas.GrantContext
-) -> schemas.TokenResponse:
+async def setup_session_by_authz_code(
+    authz_code: str
+) -> schemas.SessionInfo:
+    """
+    Fetch the session associated to the authorization code if it exists and
+    set the tracking and correlation IDs using the session information
+    """
     
+    try:
+        session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_authz_code(authz_code=authz_code)
+    except exceptions.SessionInfoDoesNotExist:
+        logger.info(f"The authorization code: {authz_code} has no session associated with it")
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="Invalid authorization code"
+        )
+    
+    # Overwrite the telemetry IDs set by default with the ones from the session
+    telemetry.tracking_id.set(session.tracking_id)
+    telemetry.correlation_id.set(session.correlation_id)
+    return session
+
+async def get_valid_authorization_code_session(grant_context: schemas.GrantContext) -> schemas.SessionInfo:
+    
+    # Ensure the authz code exists
     if(grant_context.authz_code is None):
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -164,16 +179,10 @@ async def authorization_code_token_handler(
             error_description="the authorization code cannot be null for the authorization_code grant"
         )
     
-    client: schemas.Client = grant_context.client
-    session: schemas.SessionInfo = await auth_manager.session_manager.get_session_by_authz_code(
-        authz_code=grant_context.authz_code
-    )
-    # Set the telemetry IDs as the ones store previously in the session
-    telemetry.tracking_id.set(session.tracking_id)
-    telemetry.correlation_id.set(session.correlation_id)
+    session: schemas.SessionInfo = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
 
     # Ensure the client is the same one defined in the session
-    if(client.id != session.client_id):
+    if(grant_context.client.id != session.client_id):
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_REQUEST,
@@ -193,12 +202,22 @@ async def authorization_code_token_handler(
             error=constants.ErrorCode.ACCESS_DENIED,
             error_description="access denied"
         )
+    
+    return session
 
+async def authorization_code_token_handler(
+    grant_context: schemas.GrantContext
+) -> schemas.TokenResponse:
+    
+    client: schemas.Client = grant_context.client
+    token_model: schemas.TokenModel = grant_context.token_model
+    session: schemas.SessionInfo = await get_valid_authorization_code_session(grant_context=grant_context)
+
+    # Generate token
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
-    token_model: schemas.TokenModel = client.token_model
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
-        subject=session.user_id,
+        subject=session.user_id, # type: ignore
         scopes=session.requested_scopes,
         additional_claims=authn_policy.get_extra_token_claims(session) if authn_policy.get_extra_token_claims else {}
     )

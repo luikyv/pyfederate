@@ -25,7 +25,8 @@ class GrantType(Enum):
 
 class ResponseType(Enum):
     CODE = "code"
-    CODE_ID_TOKEN = "code id_token"
+    ID_TOKEN = "id_token"
+    CODE_AND_ID_TOKEN = "code id_token"
 
 class TokenType(Enum):
     JWT = "jwt"
@@ -68,7 +69,7 @@ AUTHORIZATION_CODE_LENGTH = int(os.getenv("AUTHORIZATION_CODE_LENGTH", 20))
 STATE_PARAM_MAX_LENGTH = int(os.getenv("STATE_PARAM_MAX_LENGTH", 100))
 SECRET_ENCODING = os.getenv("SECRET_ENCODING", "utf-8")
 SERVER_PORT = int(os.getenv("SERVER_PORT", 8000))
-BEARER_TOKEN_TYPE = "bearer"
+BEARER_TOKEN_TYPE = "Bearer"
 
 @dataclass
 class JWKInfo:

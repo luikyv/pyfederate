@@ -4,7 +4,9 @@ from sqlalchemy import delete, Engine
 from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
 
-from .. import schemas, models, exceptions
+from .. import schemas, models, telemetry, exceptions
+
+logger = telemetry.get_logger(__name__)
 
 ######################################## Interfaces ########################################
 
@@ -52,18 +54,27 @@ class MockedScopeManager(ScopeManager):
         self.scopes: typing.Dict[str, schemas.Scope] = {}
 
     async def create_scope(self, scope: schemas.ScopeUpsert) -> None:
+        
         if(scope.name in self.scopes):
+            logger.info(f"{scope.name} already exists")
             raise exceptions.ScopeAlreadyExists()
+        
         self.scopes[scope.name] = schemas.Scope(**asdict(scope))
     
     async def update_scope(self, scope: schemas.ScopeUpsert) -> None:
+
         if(scope.name not in self.scopes):
+            logger.info(f"{scope.name} does not exist")
             raise exceptions.ScopeDoesNotExist()
+        
         self.scopes[scope.name] = schemas.Scope(**asdict(scope))
     
     async def get_scope(self, scope_name: str) -> schemas.Scope:
+        
         if(scope_name not in self.scopes):
+            logger.info(f"{scope_name} does not exist")
             raise exceptions.ScopeDoesNotExist()
+        
         return self.scopes[scope_name]
 
     async def get_scopes(self) -> typing.List[schemas.Scope]:
