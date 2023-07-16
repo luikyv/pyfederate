@@ -291,7 +291,7 @@ class SessionInfo():
     requested_scopes: List[str]
     state: str
     auth_policy_id: str
-    current_authn_step_id: str
+    next_authn_step_id: str
     user_id: str | None
     authz_code: str | None
     params: Dict[str, Any] = field(default_factory=dict)
@@ -305,7 +305,7 @@ AUTHN_STEPS: Dict[str, "AuthnStep"] = {}
 class AuthnStepResult():
     status: constants.AuthnStatus
 
-    def get_response(self) -> Response:
+    async def get_response(self, session: SessionInfo) -> Response:
         raise NotImplementedError()
 
 @dataclass
@@ -313,21 +313,17 @@ class AuthnStepInProgressResult(AuthnStepResult):
     response: Response
     status: constants.AuthnStatus = field(default=constants.AuthnStatus.IN_PROGRESS, init=False)
 
-    def get_response(self) -> Response:
+    async def get_response(self, session: SessionInfo) -> Response:
         return self.response
 
 @dataclass
 class AuthnStepFailureResult(AuthnStepResult):
     error_description: str
     status: constants.AuthnStatus = field(default=constants.AuthnStatus.FAILURE, init=False)
-    _redirect_uri: str = field(default="", init=False)
 
-    def set_redirect_uri(self, redirect_uri) -> None:
-        self._redirect_uri = redirect_uri
-
-    def get_response(self) -> Response:
+    async def get_response(self, session: SessionInfo) -> Response:
         return RedirectResponse(
-            url=tools.prepare_redirect_url(self._redirect_uri, {
+            url=tools.prepare_redirect_url(session.redirect_uri, {
                 "error": ErrorCode.ACCESS_DENIED.value,
                 "error_description": self.error_description,
             }),
@@ -337,24 +333,16 @@ class AuthnStepFailureResult(AuthnStepResult):
 @dataclass
 class AuthnStepSuccessResult(AuthnStepResult):
     status: constants.AuthnStatus = field(default=constants.AuthnStatus.SUCCESS, init=False)
-    _redirect_uri: str = field(init=False)
-    _authz_code: str = field(init=False)
-    _state: str = field(init=False)
 
-    def set_redirect_uri(self, redirect_uri) -> None:
-        self._redirect_uri = redirect_uri
-
-    def set_authz_code(self, authz_code: str) -> None:
-        self._authz_code = authz_code
-    
-    def set_state(self, state: str) -> None:
-        self._state = state
-
-    def get_response(self) -> Response:
+    async def get_response(self, session: SessionInfo) -> Response:
+        
+        if(session.authz_code is None):
+            raise RuntimeError("The authorization code cannot be None")
+        
         return RedirectResponse(
-            url=tools.prepare_redirect_url(self._redirect_uri, {
-                "code": self._authz_code,
-                "state": self._state,
+            url=tools.prepare_redirect_url(session.redirect_uri, {
+                "code": session.authz_code,
+                "state": session.state,
             }),
             status_code=status.HTTP_303_SEE_OTHER
         )

@@ -73,7 +73,7 @@ async def authorize(
         redirect_uri=redirect_uri,
         state=state,
         auth_policy_id=authn_policy.id,
-        current_authn_step_id=authn_policy.first_step.id,
+        next_authn_step_id=authn_policy.first_step.id,
         requested_scopes=scope.split(" "),
         authz_code=None
     )

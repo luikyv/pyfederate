@@ -218,13 +218,11 @@ grant_handlers: Dict[
 async def get_in_progress_next_step(
     session: schemas.SessionInfo,
     current_step: schemas.AuthnStep,
-    _: schemas.AuthnStepResult
 ) -> schemas.AuthnStep | None:
     """Get the next step after reaching an in progress one"""
     
-    # Update the session to indicate the processing
-    # stopped at the current step
-    session.current_authn_step_id = current_step.id
+    # Update the session to indicate the processing stopped at the current step
+    session.next_authn_step_id = current_step.id
     await auth_manager.session_manager.update_session(session_info=session)
 
     # Since the current status is IN_PROGRESS,
@@ -236,19 +234,13 @@ async def get_in_progress_next_step(
 async def get_failure_next_step(
     session: schemas.SessionInfo,
     current_step: schemas.AuthnStep,
-    step_result: schemas.AuthnStepResult
 ) -> schemas.AuthnStep | None:
     """Get the next step after reaching a failure one"""
     
-    if(not isinstance(step_result, schemas.AuthnStepFailureResult)):
-        raise RuntimeError()
-
     next_step = current_step.failure_next_step
-    if(next_step):
-        return next_step
-    
+    if(next_step): return next_step
+
     # If the next step for a failure case is None, the policy failed
-    step_result.set_redirect_uri(redirect_uri=session.redirect_uri)
     await auth_manager.session_manager.delete_session(session_id=session.id)
     return None
 
@@ -257,26 +249,19 @@ async def get_failure_next_step(
 async def get_success_next_step(
     session: schemas.SessionInfo,
     current_step: schemas.AuthnStep,
-    step_result: schemas.AuthnStepResult
 ) -> schemas.AuthnStep | None:
     """Get the next step after reaching a successful one"""
 
-    if(not isinstance(step_result, schemas.AuthnStepSuccessResult)):
-        raise RuntimeError()
-    
     next_step = current_step.success_next_step
-    if(next_step):
-        return next_step
-    
+    if(next_step): return next_step
+
     # When the next step for a success case is None, the policy finished successfully
-    if(session.user_id is None):
-        raise exceptions.PolicyFinishedWithoudMappingTheUserID()
+    if(session.user_id is None): return schemas.default_failure_step
     session.authz_code = tools.generate_authz_code()
+    session.next_authn_step_id = schemas.default_failure_step.id
     await auth_manager.session_manager.update_session(session_info=session)
-    step_result.set_authz_code(session.authz_code)
-    step_result.set_redirect_uri(redirect_uri=session.redirect_uri)
-    step_result.set_state(state=session.state)
     return None
+    
 
 #################### Handler Object ####################
 
@@ -284,7 +269,7 @@ async def get_success_next_step(
 step_update_handler: Dict[
     AuthnStatus,
     Callable[
-        [schemas.SessionInfo, schemas.AuthnStep, schemas.AuthnStepResult],
+        [schemas.SessionInfo, schemas.AuthnStep],
         Awaitable[schemas.AuthnStep | None]
     ]
 ] = {
@@ -299,17 +284,16 @@ async def manage_authentication(
 ) -> Response:
     """Go through the available policy steps untill reach an end"""
     
-    current_step: schemas.AuthnStep | None = schemas.AUTHN_STEPS.get(session.current_authn_step_id, schemas.default_failure_step)
-    authn_result = None # type: ignore
+    current_step: schemas.AuthnStep | None = schemas.AUTHN_STEPS.get(session.next_authn_step_id, schemas.default_failure_step)
+    authn_result = schemas.AuthnStepFailureResult(error_description="server error") # It will be overwritten in the first iteration
     while(current_step):
         authn_result_ = current_step.authn_func(session, request)
         authn_result: schemas.AuthnStepResult = await authn_result_ if inspect.isawaitable(authn_result_) else authn_result_ # type: ignore
         current_step = await step_update_handler[authn_result.status](
             session,
-            current_step,
-            authn_result
+            current_step
         )
     
     # Once the current step is None, the processing finished,
     # so we can return the updated response indicating success, failure, retry, etc.
-    return authn_result.get_response()
+    return await authn_result.get_response(session=session)
