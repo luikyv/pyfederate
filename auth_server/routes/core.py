@@ -1,10 +1,8 @@
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError
 
 from . import oauth, management
 from ..utils import constants, telemetry, tools, exceptions
-from ..auth_manager import manager as auth_manager
 
 logger = telemetry.get_logger(__name__)
 

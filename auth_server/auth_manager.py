@@ -73,29 +73,19 @@ class AuthManager():
         
         return available_policies[0]
     
-    async def authenticate(self, callback_id: str) -> None:
-        session: schemas.SessionInfo = await self.session_manager.get_session_by_callback_id(
-            callback_id=callback_id
-        )
-        authn_step: schemas.AuthnStep = schemas.AUTHN_STEPS[session.current_authn_step_id]
-
-        return None
+    async def verify_signing_keys(self) -> bool:
+        return set(constants.PRIVATE_JWKS.keys()).issuperset(set(await self.token_model_manager.get_model_key_ids()))
     
-    def is_ready(self) -> bool:
-        return (
+    def check_config(self) -> None:
+        assert (
             self._token_model_manager is not None
             and self._scope_manager is not None
             and self._client_manager is not None
             and self._session_manager is not None
-        )
-    
-    async def verify_signing_keys(self) -> bool:
-        return set(constants.PRIVATE_JWKS.keys()).issuperset(set(await self.token_model_manager.get_model_key_ids()))
-    
-    def run(self, app: FastAPI) -> None:
-        
-        assert self.is_ready(), "The auth manager is missing configurations"
-        assert asyncio.run(self.verify_signing_keys()), "There are signing keys defined in the token models that are not available"
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        ), "The auth manager is missing configurations"
 
+        assert asyncio.run(
+            self.verify_signing_keys()
+        ), "There are signing keys defined in the token models that are not available"
+    
 manager = AuthManager()

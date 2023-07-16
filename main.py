@@ -1,13 +1,12 @@
 from sqlalchemy import create_engine
 
-from auth_server.auth_manager import manager as auth_manager
+import auth_server
+from auth_server.auth_manager import manager
 from auth_server.utils.managers.scope_manager import OLTPScopeManager
 from auth_server.utils.managers.client_manager import OLTPClientManager
 from auth_server.utils.managers.token_manager import OLTPTokenModelManager
 from auth_server.utils.managers.session_manager import MockedSessionManager
 from auth_server.utils import models
-from auth_server.routes.core import app
-import my_server
 
 if(__name__=="__main__"):
     
@@ -15,9 +14,9 @@ if(__name__=="__main__"):
         "sqlite:///./sql_app.db", connect_args={"check_same_thread": False}
     )
     models.Base.metadata.create_all(bind=engine)
-    auth_manager.token_model_manager = OLTPTokenModelManager(engine=engine)
-    auth_manager.scope_manager = OLTPScopeManager(engine=engine)
-    auth_manager.client_manager = OLTPClientManager(engine=engine)
-    auth_manager.session_manager = MockedSessionManager()
+    manager.token_model_manager = OLTPTokenModelManager(engine=engine)
+    manager.scope_manager = OLTPScopeManager(engine=engine)
+    manager.client_manager = OLTPClientManager(engine=engine)
+    manager.session_manager = MockedSessionManager()
 
-    auth_manager.run(app=app)
+    auth_server.run()
