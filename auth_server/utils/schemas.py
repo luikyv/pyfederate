@@ -305,7 +305,7 @@ AUTHN_STEPS: Dict[str, "AuthnStep"] = {}
 class AuthnStepResult():
     status: constants.AuthnStatus
 
-    async def get_response(self, session: SessionInfo) -> Response:
+    def get_response(self, session: SessionInfo) -> Response:
         raise NotImplementedError()
 
 @dataclass
@@ -313,7 +313,7 @@ class AuthnStepInProgressResult(AuthnStepResult):
     response: Response
     status: constants.AuthnStatus = field(default=constants.AuthnStatus.IN_PROGRESS, init=False)
 
-    async def get_response(self, session: SessionInfo) -> Response:
+    def get_response(self, session: SessionInfo) -> Response:
         return self.response
 
 @dataclass
@@ -321,9 +321,9 @@ class AuthnStepFailureResult(AuthnStepResult):
     error_description: str
     status: constants.AuthnStatus = field(default=constants.AuthnStatus.FAILURE, init=False)
 
-    async def get_response(self, session: SessionInfo) -> Response:
+    def get_response(self, session: SessionInfo) -> Response:
         return RedirectResponse(
-            url=tools.prepare_redirect_url(session.redirect_uri, {
+            url=tools.prepare_redirect_url(url=session.redirect_uri, params={
                 "error": ErrorCode.ACCESS_DENIED.value,
                 "error_description": self.error_description,
             }),
@@ -334,13 +334,13 @@ class AuthnStepFailureResult(AuthnStepResult):
 class AuthnStepSuccessResult(AuthnStepResult):
     status: constants.AuthnStatus = field(default=constants.AuthnStatus.SUCCESS, init=False)
 
-    async def get_response(self, session: SessionInfo) -> Response:
+    def get_response(self, session: SessionInfo) -> Response:
         
         if(session.authz_code is None):
             raise RuntimeError("The authorization code cannot be None")
         
         return RedirectResponse(
-            url=tools.prepare_redirect_url(session.redirect_uri, {
+            url=tools.prepare_redirect_url(url=session.redirect_uri, params={
                 "code": session.authz_code,
                 "state": session.state,
             }),
@@ -361,6 +361,7 @@ class AuthnStep():
     failure_next_step: Optional["AuthnStep"]
 
     def __post_init__(self) -> None:
+        # Make sure the step id is unique
         if(self.id in AUTHN_STEPS):
             raise exceptions.AuthnStepAlreadyExistsException()
         AUTHN_STEPS[self.id] = self
@@ -368,6 +369,7 @@ class AuthnStep():
 async def default_failure_authn_func(session: SessionInfo, request: Request) -> AuthnStepResult:
     return AuthnStepFailureResult(error_description="access denied")
 
+# Step that always returns failure
 default_failure_step = AuthnStep(
     id="default_failure_step_42",
     authn_func=default_failure_authn_func,
@@ -383,6 +385,7 @@ class AuthnPolicy():
     get_extra_token_claims: Callable[[SessionInfo], Dict[str, str]] | None = None
 
     def __post_init__(self) -> None:
+        # Make sure the policy id is unique
         if(self.id in AUTHN_POLICIES):
             raise exceptions.AuthnPolicyAlreadyExistsException()
         AUTHN_POLICIES[self.id] = self

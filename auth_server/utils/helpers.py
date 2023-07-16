@@ -225,10 +225,6 @@ async def get_in_progress_next_step(
     session.next_authn_step_id = current_step.id
     await auth_manager.session_manager.update_session(session_info=session)
 
-    # Since the current status is IN_PROGRESS,
-    # return None to indicate the partial processing finished
-    return None
-
 #################### Failure ####################
 
 async def get_failure_next_step(
@@ -242,7 +238,6 @@ async def get_failure_next_step(
 
     # If the next step for a failure case is None, the policy failed
     await auth_manager.session_manager.delete_session(session_id=session.id)
-    return None
 
 #################### Success ####################
 
@@ -255,12 +250,13 @@ async def get_success_next_step(
     next_step = current_step.success_next_step
     if(next_step): return next_step
 
-    # When the next step for a success case is None, the policy finished successfully
-    if(session.user_id is None): return schemas.default_failure_step
+    # When the next step for a success case is None, the policy finished
+    if(session.user_id is None):
+        # A policy ending in success must have an user_id mapped in the session
+        return schemas.default_failure_step
     session.authz_code = tools.generate_authz_code()
     session.next_authn_step_id = schemas.default_failure_step.id
     await auth_manager.session_manager.update_session(session_info=session)
-    return None
     
 
 #################### Handler Object ####################
@@ -270,6 +266,7 @@ step_update_handler: Dict[
     AuthnStatus,
     Callable[
         [schemas.SessionInfo, schemas.AuthnStep],
+        # Return the next step. Returning None means the partial processing of the policy finished
         Awaitable[schemas.AuthnStep | None]
     ]
 ] = {
@@ -284,16 +281,16 @@ async def manage_authentication(
 ) -> Response:
     """Go through the available policy steps untill reach an end"""
     
-    current_step: schemas.AuthnStep | None = schemas.AUTHN_STEPS.get(session.next_authn_step_id, schemas.default_failure_step)
+    next_step: schemas.AuthnStep | None = schemas.AUTHN_STEPS.get(session.next_authn_step_id, schemas.default_failure_step)
     authn_result = schemas.AuthnStepFailureResult(error_description="server error") # It will be overwritten in the first iteration
-    while(current_step):
-        authn_result_ = current_step.authn_func(session, request)
+    # Once the next step is None, the processing finished
+    while(next_step):
+        authn_result_ = next_step.authn_func(session, request)
         authn_result: schemas.AuthnStepResult = await authn_result_ if inspect.isawaitable(authn_result_) else authn_result_ # type: ignore
-        current_step = await step_update_handler[authn_result.status](
+        next_step = await step_update_handler[authn_result.status](
             session,
-            current_step
+            next_step
         )
     
-    # Once the current step is None, the processing finished,
-    # so we can return the updated response indicating success, failure, retry, etc.
-    return await authn_result.get_response(session=session)
+    # Return the response of the result generated in the last step of the loop
+    return authn_result.get_response(session=session)
