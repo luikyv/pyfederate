@@ -12,6 +12,7 @@ from .import tools
 
 ######################################## Token ########################################
 
+
 @dataclass
 class TokenInfo():
     subject: str
@@ -37,11 +38,13 @@ class TokenInfo():
 
         return payload
 
+
 @dataclass
 class BearerToken:
     id: str
     info: TokenInfo
     token: str
+
 
 @dataclass
 class TokenModel():
@@ -57,9 +60,10 @@ class TokenModel():
         additional_claims: Dict[str, str]
     ) -> BearerToken:
         raise NotImplementedError()
-    
+
     def to_output(self) -> "TokenModelOut":
         raise NotImplementedError()
+
 
 @dataclass
 class TokenModelUpsert(TokenModel):
@@ -68,13 +72,14 @@ class TokenModelUpsert(TokenModel):
 
     def to_db_dict(self) -> Dict[str, Any]:
         self_dict = asdict(self)
-        
+
         self_dict["token_type"] = self.token_type.value
         return self_dict
-    
+
     def __post_init__(self) -> None:
-        if(self.token_type == constants.TokenType.JWT and self.key_id is None):
+        if (self.token_type == constants.TokenType.JWT and self.key_id is None):
             raise ValueError("JWT tokens must be associated to a key")
+
 
 @dataclass
 class JWTTokenModel(TokenModel):
@@ -110,7 +115,7 @@ class JWTTokenModel(TokenModel):
                 algorithm=self.signing_algorithm.value
             )
         )
-    
+
     def to_output(self) -> "TokenModelOut":
 
         return TokenModelOut(
@@ -124,16 +129,17 @@ class JWTTokenModel(TokenModel):
 
 #################### API Models ####################
 
+
 @dataclass
 class TokenModelIn(TokenModel):
     token_type: constants.TokenType
-    key_id: constants.JWK_IDS_LITERAL | None
+    key_id: constants.JWK_IDS_LITERAL | None  # type: ignore
 
     def __post_init__(self) -> None:
-        
-        if(self.token_type == constants.TokenType.JWT and self.key_id is None):
-            raise ValueError("JWT Token models must have a key_id and a signing_algorithm")
 
+        if (self.token_type == constants.TokenType.JWT and self.key_id is None):
+            raise ValueError(
+                "JWT Token models must have a key_id and a signing_algorithm")
 
     def to_upsert(self) -> TokenModelUpsert:
         return TokenModelUpsert(
@@ -144,6 +150,7 @@ class TokenModelIn(TokenModel):
             key_id=self.key_id,
         )
 
+
 @dataclass
 class TokenModelOut(TokenModel):
     token_type: constants.TokenType
@@ -151,6 +158,7 @@ class TokenModelOut(TokenModel):
     signing_algorithm: constants.SigningAlgorithm | None
 
 ######################################## Scope ########################################
+
 
 @dataclass
 class Scope():
@@ -163,6 +171,7 @@ class Scope():
             description=self.description
         )
 
+
 @dataclass
 class ScopeUpsert(Scope):
     def to_db_dict(self) -> Dict[str, Any]:
@@ -171,14 +180,16 @@ class ScopeUpsert(Scope):
 
 #################### API Models ####################
 
+
 @dataclass
 class ScopeIn(Scope):
-    
+
     def to_upsert(self) -> ScopeUpsert:
         return ScopeUpsert(
             name=self.name,
             description=self.description
         )
+
 
 @dataclass
 class ScopeOut(Scope):
@@ -186,28 +197,33 @@ class ScopeOut(Scope):
 
 ######################################## Client ########################################
 
+
 @dataclass
 class ClientBase():
     redirect_uris: List[str]
     response_types: List[constants.ResponseType]
     scopes: List[str]
 
+
 @dataclass
 class ClientUpsert(ClientBase):
     token_model_id: str
     id: str = field(default_factory=tools.generate_client_id, init=False)
-    secret: str = field(default_factory=tools.generate_client_secret, init=False)
+    secret: str = field(
+        default_factory=tools.generate_client_secret, init=False)
     hashed_secret: str = field(init=False)
 
     def __post_init__(self) -> None:
         self.hashed_secret = tools.hash_secret(secret=self.secret)
-    
+
     def to_db_dict(self) -> Dict[str, Any]:
         self_dict = asdict(self)
         self_dict["redirect_uris"] = ",".join(self.redirect_uris)
-        self_dict["response_types"] = ",".join([r.value for r in self.response_types])
+        self_dict["response_types"] = ",".join(
+            [r.value for r in self.response_types])
         self_dict.pop("secret")
         return self_dict
+
 
 @dataclass
 class Client(ClientBase):
@@ -229,19 +245,21 @@ class Client(ClientBase):
     def is_authenticated(self, client_secret: str) -> bool:
         return bcrypt.checkpw(
             password=client_secret.encode(constants.SECRET_ENCODING),
-            hashed_password=self.hashed_secret.encode(constants.SECRET_ENCODING)
+            hashed_password=self.hashed_secret.encode(
+                constants.SECRET_ENCODING)
         )
-    
+
     def are_scopes_allowed(self, requested_scopes: List[str]) -> bool:
         return set(requested_scopes).issubset(set(self.scopes))
-    
+
     def owns_redirect_uri(self, redirect_uri: str) -> bool:
         return redirect_uri in self.redirect_uris
-    
+
     def is_response_type_allowed(self, response_type: constants.ResponseType) -> bool:
         return response_type in self.response_types
 
 #################### API Models ####################
+
 
 @dataclass
 class ClientIn(ClientBase):
@@ -255,6 +273,7 @@ class ClientIn(ClientBase):
             token_model_id=self.token_model_id
         )
 
+
 @dataclass
 class ClientOut(ClientBase):
     id: str
@@ -263,6 +282,7 @@ class ClientOut(ClientBase):
 
 ######################################## OAuth ########################################
 
+
 @dataclass
 class GrantContext:
     client: Client
@@ -270,6 +290,7 @@ class GrantContext:
     requested_scopes: List[str]
     redirect_uri: str | None
     authz_code: str | None
+
 
 @dataclass
 class TokenResponse():
@@ -281,8 +302,9 @@ class TokenResponse():
 
 ######################################## Session ########################################
 
+
 @dataclass
-class SessionInfo():
+class AuthnSession():
     id: str
     tracking_id: str
     correlation_id: str
@@ -299,30 +321,37 @@ class SessionInfo():
 
 ######################################## Auth Policy ########################################
 
+
 AUTHN_POLICIES: Dict[str, "AuthnPolicy"] = {}
 AUTHN_STEPS: Dict[str, "AuthnStep"] = {}
+
 
 @dataclass
 class AuthnStepResult():
     status: constants.AuthnStatus
 
-    def get_response(self, session: SessionInfo) -> Response:
+    def get_response(self, session: AuthnSession) -> Response:
         raise NotImplementedError()
+
 
 @dataclass
 class AuthnStepInProgressResult(AuthnStepResult):
     response: Response
-    status: constants.AuthnStatus = field(default=constants.AuthnStatus.IN_PROGRESS, init=False)
+    status: constants.AuthnStatus = field(
+        default=constants.AuthnStatus.IN_PROGRESS, init=False)
 
-    def get_response(self, session: SessionInfo) -> Response:
+    def get_response(self, session: AuthnSession) -> Response:
         return self.response
+
 
 @dataclass
 class AuthnStepFailureResult(AuthnStepResult):
     error_description: str
-    status: constants.AuthnStatus = field(default=constants.AuthnStatus.FAILURE, init=False)
+    status: constants.AuthnStatus = field(
+        default=constants.AuthnStatus.FAILURE, init=False
+    )
 
-    def get_response(self, session: SessionInfo) -> Response:
+    def get_response(self, session: AuthnSession) -> Response:
         return RedirectResponse(
             url=tools.prepare_redirect_url(url=session.redirect_uri, params={
                 "error": ErrorCode.ACCESS_DENIED.value,
@@ -331,15 +360,18 @@ class AuthnStepFailureResult(AuthnStepResult):
             status_code=status.HTTP_303_SEE_OTHER
         )
 
+
 @dataclass
 class AuthnStepSuccessResult(AuthnStepResult):
-    status: constants.AuthnStatus = field(default=constants.AuthnStatus.SUCCESS, init=False)
+    status: constants.AuthnStatus = field(
+        default=constants.AuthnStatus.SUCCESS, init=False
+    )
 
-    def get_response(self, session: SessionInfo) -> Response:
-        
-        if(session.authz_code is None):
+    def get_response(self, session: AuthnSession) -> Response:
+
+        if (session.authz_code is None):
             raise RuntimeError("The authorization code cannot be None")
-        
+
         return RedirectResponse(
             url=tools.prepare_redirect_url(url=session.redirect_uri, params={
                 "code": session.authz_code,
@@ -348,12 +380,13 @@ class AuthnStepSuccessResult(AuthnStepResult):
             status_code=status.HTTP_303_SEE_OTHER
         )
 
+
 @dataclass
 class AuthnStep():
     id: str
     authn_func: Callable[
         [
-            SessionInfo,
+            AuthnSession,
             Request
         ],
         AuthnStepResult | Awaitable[AuthnStepResult]
@@ -363,11 +396,12 @@ class AuthnStep():
 
     def __post_init__(self) -> None:
         # Make sure the step id is unique
-        if(self.id in AUTHN_STEPS):
+        if (self.id in AUTHN_STEPS):
             raise exceptions.AuthnStepAlreadyExistsException()
         AUTHN_STEPS[self.id] = self
 
-async def default_failure_authn_func(session: SessionInfo, request: Request) -> AuthnStepResult:
+
+async def default_failure_authn_func(session: AuthnSession, request: Request) -> AuthnStepResult:
     return AuthnStepFailureResult(error_description="access denied")
 
 # Step that always returns failure
@@ -378,15 +412,17 @@ default_failure_step = AuthnStep(
     failure_next_step=None
 )
 
+
 @dataclass
 class AuthnPolicy():
     id: str
     is_available: Callable[[Client, Request], bool]
     first_step: AuthnStep
-    get_extra_token_claims: Callable[[SessionInfo], Dict[str, str]] | None = None
+    get_extra_token_claims: Callable[[
+        AuthnSession], Dict[str, str]] | None = None
 
     def __post_init__(self) -> None:
         # Make sure the policy id is unique
-        if(self.id in AUTHN_POLICIES):
+        if (self.id in AUTHN_POLICIES):
             raise exceptions.AuthnPolicyAlreadyExistsException()
         AUTHN_POLICIES[self.id] = self

@@ -6,30 +6,34 @@ import json
 import os
 from fastapi import Header
 import base64
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 ########## Enumerations ##########
 
+
 class HTTPHeaders(Enum):
     CACHE_CONTROL = "Cache-Control"
     LOCATION = "location"
     X_CORRELATION_ID = "X-Correlation-ID"
+
 
 class GrantType(Enum):
     CLIENT_CREDENTIALS = "client_credentials"
     AUTHORIZATION_CODE = "authorization_code"
     REFRESH_TOKEN = "refresh_token"
 
+
 class ResponseType(Enum):
     CODE = "code"
     ID_TOKEN = "id_token"
     CODE_AND_ID_TOKEN = "code id_token"
 
+
 class TokenType(Enum):
     JWT = "jwt"
+
 
 class TokenClaim(Enum):
     AUDIENCE = "aud"
@@ -41,9 +45,11 @@ class TokenClaim(Enum):
     SUBJECT = "sub"
     SCOPE = "scope"
 
+
 class SigningAlgorithm(Enum):
     HS256 = "HS256"
     RS256 = "RS256"
+
 
 class ErrorCode(Enum):
     ACCESS_DENIED = "access_denied"
@@ -52,10 +58,12 @@ class ErrorCode(Enum):
     INVALID_GRANT = "invalid_grant"
     INVALID_SCOPE = "invalid_scope"
 
+
 class AuthnStatus(Enum):
     IN_PROGRESS = "in_progress"
     FAILURE = "failure"
     SUCCESS = "success"
+
 
 ########## Configurations ##########
 LOG_LEVEL = logging.getLevelName(os.environ.get("LOG_LEVEL", "DEBUG"))
@@ -71,11 +79,13 @@ SECRET_ENCODING = os.getenv("SECRET_ENCODING", "utf-8")
 SERVER_PORT = int(os.getenv("SERVER_PORT", 8000))
 BEARER_TOKEN_TYPE = "Bearer"
 
+
 @dataclass
 class JWKInfo:
     key_id: str
     key: str
     signing_algorithm: str
+
 
 # Load the privates JWKs
 PRIVATE_JWKS: Dict[
@@ -87,10 +97,14 @@ PRIVATE_JWKS: Dict[
         signing_algorithm=key["alg"]
     ) for key in json.loads(
         # The privates jwks are passed as a base64 enconded json through the env var PRIVATE_JWKS_JSON
-        base64.b64decode(os.environ["PRIVATE_JWKS_JSON"]).decode(SECRET_ENCODING)
+        base64.b64decode(os.environ["PRIVATE_JWKS_JSON"]).decode(
+            SECRET_ENCODING)
     )["keys"]
 }
 
 ########## Type Hints ##########
-JWK_IDS_LITERAL = Literal[tuple(PRIVATE_JWKS.keys())] # type: ignore
-CORRELATION_ID_HEADER_TYPE = Annotated[str | None, Header(alias=HTTPHeaders.X_CORRELATION_ID.name)]
+JWK_IDS_LITERAL = Literal[tuple(PRIVATE_JWKS.keys())]  # type: ignore
+CORRELATION_ID_HEADER_TYPE = Annotated[
+    str | None,
+    Header(alias=HTTPHeaders.X_CORRELATION_ID.name)
+]

@@ -65,7 +65,7 @@ async def authorize(
             error_description="no policy found"
         )
     
-    session = schemas.SessionInfo(
+    session = schemas.AuthnSession(
         id=tools.generate_session_id(),
         tracking_id=telemetry.tracking_id.get(),
         correlation_id=telemetry.correlation_id.get(),
@@ -79,7 +79,7 @@ async def authorize(
         requested_scopes=scope.split(" "),
         authz_code=None
     )
-    await auth_manager.session_manager.create_session(session_info=session)
+    await auth_manager.session_manager.create_session(session=session)
 
     return await helpers.manage_authentication(session, request)
 
@@ -89,7 +89,7 @@ async def authorize(
     status_code=status.HTTP_200_OK
 )
 async def callback_authorize(
-    session: Annotated[schemas.SessionInfo, Depends(helpers.setup_session_by_callback_id)],
+    session: Annotated[schemas.AuthnSession, Depends(helpers.setup_session_by_callback_id)],
     request: Request,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):

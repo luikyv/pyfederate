@@ -15,11 +15,13 @@ correlation_id: contextvars.ContextVar[str] = contextvars.ContextVar(
     default=str(uuid.UUID('00000000-0000-0000-0000-000000000000'))
 )
 
+
 class ContextFilter(logging.Filter):
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord):
         record.tracking_id = tracking_id.get()
         record.correlation_id = correlation_id.get()
         return True
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord):
@@ -35,8 +37,9 @@ class JsonFormatter(logging.Formatter):
         }
         return json.dumps(json_record)
 
+
 def get_logger(name: str) -> logging.Logger:
-    
+
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(JsonFormatter())
     stream_handler.addFilter(ContextFilter())
