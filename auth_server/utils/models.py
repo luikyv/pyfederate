@@ -66,8 +66,8 @@ class Client(Base):
         secondary=Table(
             "client_scope",
             Base.metadata,
-            Column("client_id", ForeignKey("clients.id")),
-            Column("scope_name", ForeignKey("scopes.name")),
+            Column("client_id", ForeignKey("clients.id")),  # type: ignore
+            Column("scope_name", ForeignKey("scopes.name")),  # type: ignore
         ),
         lazy="joined"
     )

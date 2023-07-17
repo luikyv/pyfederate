@@ -133,7 +133,7 @@ class JWTTokenModel(TokenModel):
 @dataclass
 class TokenModelIn(TokenModel):
     token_type: constants.TokenType
-    key_id: constants.JWK_IDS_LITERAL | None  # type: ignore
+    key_id: constants.JWK_IDS_LITERAL | None
 
     def __post_init__(self) -> None:
 
@@ -203,7 +203,7 @@ class ClientBase():
     redirect_uris: List[str]
     response_types: List[constants.ResponseType]
     scopes: List[str]
-    is_pcke_required: bool = False
+    is_pcke_required: bool
 
 
 @dataclass
@@ -241,6 +241,7 @@ class Client(ClientBase):
             redirect_uris=self.redirect_uris,
             response_types=self.response_types,
             scopes=self.scopes,
+            is_pcke_required=self.is_pcke_required,
             token_model_id=self.token_model.id
         )
 
@@ -272,6 +273,7 @@ class ClientIn(ClientBase):
             redirect_uris=self.redirect_uris,
             response_types=self.response_types,
             scopes=self.scopes,
+            is_pcke_required=self.is_pcke_required,
             token_model_id=self.token_model_id
         )
 

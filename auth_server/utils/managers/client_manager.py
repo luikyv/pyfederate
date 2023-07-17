@@ -67,6 +67,7 @@ class MockedClientManager(ClientManager):
             redirect_uris=client.redirect_uris,
             response_types=client.response_types,
             scopes=client.scopes,
+            is_pcke_required=client.is_pcke_required,
             token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
             hashed_secret=client.hashed_secret,
             secret=None
@@ -85,6 +86,7 @@ class MockedClientManager(ClientManager):
             redirect_uris=client.redirect_uris,
             response_types=client.response_types,
             scopes=client.scopes,
+            is_pcke_required=client.is_pcke_required,
             token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
             hashed_secret=client.hashed_secret,
             secret=None

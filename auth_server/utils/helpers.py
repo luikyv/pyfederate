@@ -41,7 +41,7 @@ async def get_valid_client(
         scope: Annotated[str, Query()],
         response_type: Annotated[constants.ResponseType, Query()],
         redirect_uri: Annotated[str, Query()],
-        code_challenge: Annotated[str | None, Query()] = None,
+        code_challenge: Annotated[str | None, Query()],
         code_challenge_method: Annotated[
             constants.CodeChallengeMethod,
             Query()
@@ -236,7 +236,8 @@ async def get_valid_authorization_code_session(grant_context: schemas.GrantConte
             error_description="access denied"
         )
     # Ensure the PCKE extension
-    if (session.code_challenge is not None):
+    if (session.code_challenge):
+        # Raise exception when code verifier is not provided or it doesn't match the code challenge
         if (grant_context.code_verifier is None
            or not tools.verify_matches_challenge(code_verifier=grant_context.code_verifier, code_challenge=session.code_challenge)):
             raise exceptions.HTTPException(

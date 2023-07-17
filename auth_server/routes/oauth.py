@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Query, Depends, Request
+from fastapi import APIRouter, status, Query, Depends, Request, Response
 
 from ..auth_manager import manager as auth_manager
 from ..utils.constants import GrantType
@@ -49,14 +49,19 @@ async def get_token(
     status_code=status.HTTP_200_OK
 )
 async def authorize(
+    request: Request,
     client: Annotated[schemas.Client, Depends(helpers.get_valid_client)],
     # The redirect_uri and scope params are already validated when building the client above
     redirect_uri: Annotated[str, Query()],
     scope: Annotated[str, Query()],
     state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
-    request: Request,
+    code_challenge: Annotated[str | None, Query()],
+    code_challenge_method: Annotated[
+        constants.CodeChallengeMethod,
+        Query()
+    ] = constants.CodeChallengeMethod.S256,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
-):
+) -> Response:
 
     try:
         authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(
@@ -83,7 +88,8 @@ async def authorize(
         auth_policy_id=authn_policy.id,
         next_authn_step_id=authn_policy.first_step.id,
         requested_scopes=scope.split(" "),
-        authz_code=None
+        authz_code=None,
+        code_challenge=code_challenge
     )
     await auth_manager.session_manager.create_session(session=session)
 

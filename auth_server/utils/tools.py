@@ -63,7 +63,7 @@ def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
     """Add path params to the redirect url"""
 
     request_url_builder = PreparedRequest()
-    request_url_builder.prepare_url(url=url, params=params)
+    request_url_builder.prepare_url(url=url, params=params)  # type: ignore
     return quote(str(request_url_builder.url), safe=":/%#?=@[]!$&'()*+,;")
 
 
