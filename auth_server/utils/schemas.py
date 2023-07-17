@@ -203,6 +203,7 @@ class ClientBase():
     redirect_uris: List[str]
     response_types: List[constants.ResponseType]
     scopes: List[str]
+    is_pcke_required: bool = False
 
 
 @dataclass
@@ -210,7 +211,8 @@ class ClientUpsert(ClientBase):
     token_model_id: str
     id: str = field(default_factory=tools.generate_client_id, init=False)
     secret: str = field(
-        default_factory=tools.generate_client_secret, init=False)
+        default_factory=tools.generate_client_secret, init=False
+    )
     hashed_secret: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -290,6 +292,7 @@ class GrantContext:
     requested_scopes: List[str]
     redirect_uri: str | None
     authz_code: str | None
+    code_verifier: str | None
 
 
 @dataclass
@@ -317,6 +320,7 @@ class AuthnSession():
     next_authn_step_id: str
     user_id: str | None
     authz_code: str | None
+    code_challenge: str | None
     params: Dict[str, Any] = field(default_factory=dict)
 
 ######################################## Auth Policy ########################################

@@ -41,6 +41,11 @@ async def get_valid_client(
         scope: Annotated[str, Query()],
         response_type: Annotated[constants.ResponseType, Query()],
         redirect_uri: Annotated[str, Query()],
+        code_challenge: Annotated[str | None, Query()] = None,
+        code_challenge_method: Annotated[
+            constants.CodeChallengeMethod,
+            Query()
+        ] = constants.CodeChallengeMethod.S256,
 ) -> schemas.Client:
 
     client: schemas.Client = await get_client(client_id=client_id)
@@ -69,6 +74,13 @@ async def get_valid_client(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="invalid redirect_uri"
+        )
+    # Check if the PCKE extension is mandatory
+    if (client.is_pcke_required and code_challenge is None):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="pcke is required"
         )
 
     return client
@@ -223,6 +235,15 @@ async def get_valid_authorization_code_session(grant_context: schemas.GrantConte
             error=constants.ErrorCode.ACCESS_DENIED,
             error_description="access denied"
         )
+    # Ensure the PCKE extension
+    if (session.code_challenge is not None):
+        if (grant_context.code_verifier is None
+           or not tools.verify_matches_challenge(code_verifier=grant_context.code_verifier, code_challenge=session.code_challenge)):
+            raise exceptions.HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                error=constants.ErrorCode.ACCESS_DENIED,
+                error_description="invalid code verifier"
+            )
 
     return session
 

@@ -51,6 +51,10 @@ class SigningAlgorithm(Enum):
     RS256 = "RS256"
 
 
+class CodeChallengeMethod(Enum):
+    S256 = "S256"
+
+
 class ErrorCode(Enum):
     ACCESS_DENIED = "access_denied"
     INVALID_REQUEST = "invalid_request"

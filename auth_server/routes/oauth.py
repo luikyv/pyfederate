@@ -8,8 +8,9 @@ from ..utils import constants, telemetry, schemas, tools, helpers, exceptions
 logger = telemetry.get_logger(__name__)
 
 router = APIRouter(
-    tags = ["oauth"]
+    tags=["oauth"]
 )
+
 
 @router.post(
     "/token",
@@ -20,25 +21,28 @@ router = APIRouter(
 async def get_token(
     client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
     grant_type: Annotated[GrantType, Query()],
-    code: Annotated[str | None, Query()] = None,
-    scope: Annotated[str | None, Query()] = None,
-    redirect_uri: Annotated[str | None, Query()] = None,
-    _: constants.CORRELATION_ID_HEADER_TYPE = None,
+    code: Annotated[str | None, Query()],
+    scope: Annotated[str | None, Query()],
+    redirect_uri: Annotated[str | None, Query()],
+    code_verifier: Annotated[str | None, Query(min_length=43, max_length=128)],
+    _: constants.CORRELATION_ID_HEADER_TYPE,
 ):
     logger.info(f"Client {client.id} started the grant {grant_type.value}")
-    requested_scopes: List[str] = scope.split(" ")  if scope is not None else []
+    requested_scopes: List[str] = scope.split(" ") if scope is not None else []
 
     grant_context = schemas.GrantContext(
         client=client,
         token_model=client.token_model,
         requested_scopes=requested_scopes,
         redirect_uri=redirect_uri,
-        authz_code=code
+        authz_code=code,
+        code_verifier=code_verifier
     )
 
     return await helpers.grant_handlers[grant_type](
         grant_context
     )
+
 
 @router.get(
     "/authorize",
@@ -55,16 +59,18 @@ async def authorize(
 ):
 
     try:
-        authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(client=client, request=request)
+        authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(
+            client=client, request=request)
         logger.info(f"Policy retrieved")
     except exceptions.NoAuthenticationPoliciesAvailable:
-        logger.error(f"No authentication policy found for client with ID: {client.id}")
+        logger.error(
+            f"No authentication policy found for client with ID: {client.id}")
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="no policy found"
         )
-    
+
     session = schemas.AuthnSession(
         id=tools.generate_session_id(),
         tracking_id=telemetry.tracking_id.get(),

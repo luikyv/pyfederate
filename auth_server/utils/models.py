@@ -1,13 +1,15 @@
 import typing
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import Table, Column, ForeignKey, String, Integer
+from sqlalchemy import Table, Column, ForeignKey, String, Integer, Boolean
 
 from .constants import TokenType, SigningAlgorithm
 from . import schemas, constants
 
+
 class Base(DeclarativeBase):
     pass
+
 
 class TokenModel(Base):
     __tablename__ = "token_models"
@@ -16,14 +18,16 @@ class TokenModel(Base):
     token_type: Mapped[str] = mapped_column(String(10))
     issuer: Mapped[str] = mapped_column(String(200))
     expires_in: Mapped[int] = mapped_column(Integer())
-    key_id: Mapped[typing.Optional[str]] = mapped_column(String(50), nullable=True)
-    signing_algorithm: Mapped[typing.Optional[str]] = mapped_column(String(10), nullable=True)
+    key_id: Mapped[typing.Optional[str]] = mapped_column(
+        String(50), nullable=True)
+    signing_algorithm: Mapped[typing.Optional[str]
+                              ] = mapped_column(String(10), nullable=True)
 
     def to_schema(self) -> schemas.TokenModel:
-        if(self.token_type == TokenType.JWT.value):
-            if(self.key_id is None):
+        if (self.token_type == TokenType.JWT.value):
+            if (self.key_id is None):
                 raise RuntimeError("The key id is never null for jwt tokens")
-            
+
             jwk: constants.JWKInfo = constants.PRIVATE_JWKS[self.key_id]
             return schemas.JWTTokenModel(
                 id=self.id,
@@ -33,8 +37,9 @@ class TokenModel(Base):
                 key=jwk.key,
                 signing_algorithm=SigningAlgorithm(jwk.signing_algorithm)
             )
-        
+
         raise NotImplementedError()
+
 
 class Scope(Base):
     __tablename__ = "scopes"
@@ -48,6 +53,7 @@ class Scope(Base):
             description=self.description
         )
 
+
 class Client(Base):
     __tablename__ = "clients"
 
@@ -55,6 +61,7 @@ class Client(Base):
     hashed_secret: Mapped[str] = mapped_column(String(100))
     redirect_uris: Mapped[str] = mapped_column(String(1000))
     response_types: Mapped[str] = mapped_column(String(100))
+    is_pcke_required: Mapped[bool] = mapped_column(Boolean())
     scopes: Mapped[typing.List[Scope]] = relationship(
         secondary=Table(
             "client_scope",
@@ -74,7 +81,8 @@ class Client(Base):
             secret=secret,
             hashed_secret=self.hashed_secret,
             redirect_uris=self.redirect_uris.split(","),
-            response_types=[constants.ResponseType(response_type) for response_type in self.response_types.split(",")],
+            response_types=[constants.ResponseType(
+                response_type) for response_type in self.response_types.split(",")],
             scopes=[scope.name for scope in self.scopes],
             token_model=self.token_model.to_schema()
         )
