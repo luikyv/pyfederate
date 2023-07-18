@@ -32,7 +32,7 @@ async def get_client(
     return client
 
 
-async def get_valid_client(
+async def get_valid_client_for_authorize(
         client_id: Annotated[
             str,
             Query(min_length=constants.CLIENT_ID_MIN_LENGH,
@@ -188,12 +188,20 @@ def validate_session_and_grant_context(
 ) -> None:
     client: schemas.Client = grant_context.client
 
-    # Ensure the client is the same one defined in the session
-    if (client.id != session.client_id):
+    # Verify authz code validity
+    if (tools.get_timestamp_now() >= (session.authz_code_creation_timestamp if session.authz_code_creation_timestamp else 0) + constants.AUTHORIZATION_SESSION_TIMEOUT):
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_GRANT,
             error_description="The authorization code is invalid or expired"
+        )
+
+    # Ensure the client is the same one defined in the session
+    if (client.id != session.client_id):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error=constants.ErrorCode.INVALID_CLIENT,
+            error_description="invalid credentials"
         )
     # Ensure the redirect uri passed during the /authorize step is the same passed in the /token
     if (grant_context.redirect_uri is None or grant_context.redirect_uri != session.redirect_uri):
@@ -336,6 +344,7 @@ async def get_success_next_step(
         # A policy ending in success must have an user_id mapped in the session
         return schemas.default_failure_step
     session.authz_code = tools.generate_authz_code()
+    session.authz_code_creation_timestamp = tools.get_timestamp_now()
     # Since the policy finished successfully, make sure it cannot be called again
     session.next_authn_step_id = schemas.default_failure_step.id
     await auth_manager.session_manager.update_session(session=session)

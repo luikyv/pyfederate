@@ -20,17 +20,18 @@ router = APIRouter(
 )
 async def get_token(
     client: Annotated[schemas.Client, Depends(helpers.get_client)],
+    grant_type: Annotated[GrantType, Query()],
     client_secret: Annotated[
         str | None,
         Query(min_length=constants.CLIENT_SECRET_MIN_LENGH,
               max_length=constants.CLIENT_SECRET_MAX_LENGH)
-    ],
-    grant_type: Annotated[GrantType, Query()],
-    code: Annotated[str | None, Query()],
-    scope: Annotated[str | None, Query()],
-    redirect_uri: Annotated[str | None, Query()],
-    code_verifier: Annotated[str | None, Query(min_length=43, max_length=128)],
-    _: constants.CORRELATION_ID_HEADER_TYPE,
+    ] = None,
+    code: Annotated[str | None, Query()] = None,
+    scope: Annotated[str | None, Query()] = None,
+    redirect_uri: Annotated[str | None, Query()] = None,
+    code_verifier: Annotated[str | None, Query(
+        min_length=43, max_length=128)] = None,
+    _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):
     if (not client.is_grant_type_allowed(grant_type=grant_type)):
         logger.info(
@@ -64,12 +65,12 @@ async def get_token(
 )
 async def authorize(
     request: Request,
-    client: Annotated[schemas.Client, Depends(helpers.get_valid_client)],
+    client: Annotated[schemas.Client, Depends(helpers.get_valid_client_for_authorize)],
     # The redirect_uri and scope params are already validated when building the client above
     redirect_uri: Annotated[str, Query()],
     scope: Annotated[str, Query()],
     state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
-    code_challenge: Annotated[str | None, Query()],
+    code_challenge: Annotated[str | None, Query()] = None,
     code_challenge_method: Annotated[
         constants.CodeChallengeMethod,
         Query()
@@ -103,7 +104,8 @@ async def authorize(
         next_authn_step_id=authn_policy.first_step.id,
         requested_scopes=scope.split(" "),
         authz_code=None,
-        code_challenge=code_challenge
+        code_challenge=code_challenge,
+        authz_code_creation_timestamp=tools.get_timestamp_now()
     )
     await auth_manager.session_manager.create_session(session=session)
 

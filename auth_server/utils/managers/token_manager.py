@@ -49,7 +49,7 @@ class TokenModelManager(ABC):
 
 class MockedTokenModelManager(TokenModelManager):
 
-    def __init__(self) -> None:
+    def __init__(self, max_number: int = 10) -> None:
         self.token_models: typing.Dict[str, schemas.TokenModel] = {}
 
     async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
@@ -64,7 +64,8 @@ class MockedTokenModelManager(TokenModelManager):
                 issuer=token_model.issuer,
                 expires_in=token_model.expires_in,
                 key_id=token_model.key_id,  # type: ignore
-                key=constants.PRIVATE_JWKS[token_model.key_id].key, # type: ignore
+                key=constants.PRIVATE_JWKS[
+                    token_model.key_id].key,  # type: ignore
                 signing_algorithm=constants.SigningAlgorithm(
                     constants.PRIVATE_JWKS[token_model.key_id].signing_algorithm),  # type: ignore
             )

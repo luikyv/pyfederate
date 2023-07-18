@@ -52,7 +52,7 @@ class ClientManager(ABC):
 
 class MockedClientManager(ClientManager):
 
-    def __init__(self, token_manager: TokenModelManager) -> None:
+    def __init__(self, token_manager: TokenModelManager, max_number: int = 10) -> None:
         self.token_manager = token_manager
         self.clients: typing.Dict[str, schemas.Client] = {}
 

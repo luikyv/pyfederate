@@ -347,6 +347,7 @@ class AuthnSession():
     next_authn_step_id: str
     user_id: str | None
     authz_code: str | None
+    authz_code_creation_timestamp: int | None
     code_challenge: str | None
     params: Dict[str, Any] = field(default_factory=dict)
 

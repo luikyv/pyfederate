@@ -9,6 +9,7 @@ from urllib.parse import quote
 from hashlib import sha256
 import base64
 import json
+import time
 
 from . import constants
 
@@ -80,3 +81,7 @@ def to_base64_string(extra_params: Dict[str, str]) -> str:
 
 def to_json(base64_string: str) -> Dict[str, str]:
     return json.loads(base64.b64decode(base64_string.encode(constants.SECRET_ENCODING)))
+
+
+def get_timestamp_now() -> int:
+    return int(time.time())

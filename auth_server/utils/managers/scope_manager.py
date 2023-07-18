@@ -52,7 +52,7 @@ class ScopeManager(ABC):
 
 class MockedScopeManager(ScopeManager):
 
-    def __init__(self) -> None:
+    def __init__(self, max_number: int = 10) -> None:
         self.scopes: typing.Dict[str, schemas.Scope] = {}
 
     async def create_scope(self, scope: schemas.ScopeUpsert) -> None:

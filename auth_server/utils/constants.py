@@ -86,6 +86,8 @@ SESSION_ID_LENGTH = int(os.getenv("SESSION_ID_LENGTH", 20))
 AUTHORIZATION_CODE_LENGTH = int(os.getenv("AUTHORIZATION_CODE_LENGTH", 20))
 STATE_PARAM_MAX_LENGTH = int(os.getenv("STATE_PARAM_MAX_LENGTH", 100))
 SECRET_ENCODING = os.getenv("SECRET_ENCODING", "utf-8")
+AUTHORIZATION_SESSION_TIMEOUT = int(
+    os.getenv("AUTHORIZATION_SESSION_TIMEOUT", 60))
 SERVER_PORT = int(os.getenv("SERVER_PORT", 8000))
 BEARER_TOKEN_TYPE = "Bearer"
 
@@ -116,5 +118,5 @@ PRIVATE_JWKS: Dict[
 JWK_IDS_LITERAL = Literal[tuple(PRIVATE_JWKS.keys())]  # type: ignore
 CORRELATION_ID_HEADER_TYPE = Annotated[
     str | None,
-    Header(alias=HTTPHeaders.X_CORRELATION_ID.name)
+    Header(alias=HTTPHeaders.X_CORRELATION_ID.value)
 ]
