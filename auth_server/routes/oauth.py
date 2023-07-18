@@ -82,7 +82,7 @@ async def authorize(
         str,
         Query(description="URL to where the user will be redirected to once he is authenticated")
     ],
-    scope: Annotated[str, Query("Space separeted list of scopes")],
+    scope: Annotated[str, Query(description="Space separeted list of scopes")],
     state: Annotated[
         str,
         Query(max_length=constants.STATE_PARAM_MAX_LENGTH,

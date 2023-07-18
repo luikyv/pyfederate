@@ -33,19 +33,22 @@ async def get_client(
 
 
 async def get_valid_client_for_authorize(
-        client_id: Annotated[
-            str,
-            Query(min_length=constants.CLIENT_ID_MIN_LENGH,
-                  max_length=constants.CLIENT_ID_MAX_LENGH)
-        ],
-        scope: Annotated[str, Query()],
-        response_type: Annotated[constants.ResponseType, Query()],
-        redirect_uri: Annotated[str, Query()],
-        code_challenge: Annotated[str | None, Query()],
-        code_challenge_method: Annotated[
-            constants.CodeChallengeMethod,
-            Query()
-        ] = constants.CodeChallengeMethod.S256,
+    client_id: Annotated[
+        str,
+        Query(min_length=constants.CLIENT_ID_MIN_LENGH,
+              max_length=constants.CLIENT_ID_MAX_LENGH)
+    ],
+    scope: Annotated[str, Query()],
+    response_type: Annotated[constants.ResponseType, Query()],
+    redirect_uri: Annotated[str, Query()],
+    code_challenge: Annotated[
+        str | None,
+        Query(description="Used by the PCKE extension. This value is the hash of the code verifier")
+    ] = None,
+    code_challenge_method: Annotated[
+        constants.CodeChallengeMethod,
+        Query(description="Method used to generate the code challenge")
+    ] = constants.CodeChallengeMethod.S256,
 ) -> schemas.Client:
 
     client: schemas.Client = await get_client(client_id=client_id)
