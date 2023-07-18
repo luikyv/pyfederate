@@ -55,6 +55,11 @@ class CodeChallengeMethod(Enum):
     S256 = "S256"
 
 
+class ClientAuthnMethod(Enum):
+    SECRET = "secret"
+    NONE = "none"
+
+
 class ErrorCode(Enum):
     ACCESS_DENIED = "access_denied"
     INVALID_REQUEST = "invalid_request"

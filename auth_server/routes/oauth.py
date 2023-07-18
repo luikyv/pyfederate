@@ -19,7 +19,12 @@ router = APIRouter(
     status_code=status.HTTP_200_OK
 )
 async def get_token(
-    client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
+    client: Annotated[schemas.Client, Depends(helpers.get_client)],
+    client_secret: Annotated[
+        str | None,
+        Query(min_length=constants.CLIENT_SECRET_MIN_LENGH,
+              max_length=constants.CLIENT_SECRET_MAX_LENGH)
+    ],
     grant_type: Annotated[GrantType, Query()],
     code: Annotated[str | None, Query()],
     scope: Annotated[str | None, Query()],
@@ -27,11 +32,20 @@ async def get_token(
     code_verifier: Annotated[str | None, Query(min_length=43, max_length=128)],
     _: constants.CORRELATION_ID_HEADER_TYPE,
 ):
+    if (not client.is_grant_type_allowed(grant_type=grant_type)):
+        logger.info(
+            f"The grant {grant_type.value} is not allowed to client {client.id}")
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="grant type not allowed"
+        )
     logger.info(f"Client {client.id} started the grant {grant_type.value}")
     requested_scopes: List[str] = scope.split(" ") if scope is not None else []
 
     grant_context = schemas.GrantContext(
         client=client,
+        client_secret=client_secret,
         token_model=client.token_model,
         requested_scopes=requested_scopes,
         redirect_uri=redirect_uri,

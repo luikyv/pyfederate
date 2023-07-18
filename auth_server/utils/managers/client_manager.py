@@ -3,7 +3,7 @@ from sqlalchemy import delete, Engine
 from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
 
-from .. import models, schemas, telemetry, exceptions
+from .. import models, schemas, telemetry, tools, exceptions
 from .token_manager import TokenModelManager
 
 logger = telemetry.get_logger(__name__)
@@ -64,15 +64,20 @@ class MockedClientManager(ClientManager):
 
         client_ = schemas.Client(
             id=client.id,
+            authn_method=client.authn_method,
             redirect_uris=client.redirect_uris,
             response_types=client.response_types,
+            grant_types=client.grant_types,
             scopes=client.scopes,
             is_pcke_required=client.is_pcke_required,
             token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
-            hashed_secret=client.hashed_secret,
+            hashed_secret=tools.hash_secret(
+                client.secret) if (client.secret) else None,
             secret=None
         )
         self.clients[client.id] = client_
+
+        client_.secret = client.secret
         return client_
 
     async def update_client(self, client: schemas.ClientUpsert) -> schemas.Client:
@@ -83,15 +88,20 @@ class MockedClientManager(ClientManager):
 
         client_ = schemas.Client(
             id=client.id,
+            authn_method=client.authn_method,
             redirect_uris=client.redirect_uris,
             response_types=client.response_types,
+            grant_types=client.grant_types,
             scopes=client.scopes,
             is_pcke_required=client.is_pcke_required,
             token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
-            hashed_secret=client.hashed_secret,
+            hashed_secret=tools.hash_secret(
+                client.secret) if (client.secret) else None,
             secret=None
         )
         self.clients[client.id] = client_
+
+        client_.secret = client.secret
         return client_
 
     async def get_client(self, client_id: str) -> schemas.Client:

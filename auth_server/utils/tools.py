@@ -67,7 +67,7 @@ def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
     return quote(str(request_url_builder.url), safe=":/%#?=@[]!$&'()*+,;")
 
 
-def verify_matches_challenge(code_verifier: str, code_challenge: str) -> bool:
+def is_pcke_valid(code_verifier: str, code_challenge: str) -> bool:
     return base64.urlsafe_b64encode(
         sha256(code_verifier.encode(constants.SECRET_ENCODING)).digest()
     ).decode(constants.SECRET_ENCODING) == code_challenge

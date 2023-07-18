@@ -86,33 +86,6 @@ async def get_valid_client(
     return client
 
 
-async def get_authenticated_client(
-        client_id: Annotated[
-            str,
-            Query(min_length=constants.CLIENT_ID_MIN_LENGH,
-                  max_length=constants.CLIENT_ID_MAX_LENGH)
-        ],
-        client_secret: Annotated[
-            str,
-            Query(min_length=constants.CLIENT_SECRET_MIN_LENGH,
-                  max_length=constants.CLIENT_SECRET_MAX_LENGH)
-        ]
-) -> schemas.Client:
-    """Get client and verify that its secret matches client_secret"""
-
-    client: schemas.Client = await get_client(client_id=client_id)
-
-    if (not client.is_authenticated(client_secret=client_secret)):
-        logger.info(f"The client with ID: {client_id} is not authenticated")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            error=constants.ErrorCode.INVALID_CLIENT,
-            error_description="invalid credentials"
-        )
-
-    return client
-
-
 def setup_telemetry(
     session: schemas.AuthnSession
 ) -> None:
@@ -154,6 +127,13 @@ async def client_credentials_token_handler(
 ) -> schemas.TokenResponse:
 
     client: schemas.Client = grant_context.client
+    # Ensure the client is authenticated
+    if (grant_context.client_secret is None or not client.is_authenticated(client_secret=grant_context.client_secret)):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid credentials"
+        )
     # Check if the scopes requested are available to the client
     if (not client.are_scopes_allowed(requested_scopes=grant_context.requested_scopes)):
         raise exceptions.HTTPException(
@@ -202,20 +182,14 @@ async def setup_session_by_authz_code(
     return session
 
 
-async def get_valid_authorization_code_session(grant_context: schemas.GrantContext) -> schemas.AuthnSession:
-
-    # Ensure the authz code exists
-    if (grant_context.authz_code is None):
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_GRANT,
-            error_description="the authorization code cannot be null for the authorization_code grant"
-        )
-
-    session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
+def validate_session_and_grant_context(
+    grant_context: schemas.GrantContext,
+    session: schemas.AuthnSession
+) -> None:
+    client: schemas.Client = grant_context.client
 
     # Ensure the client is the same one defined in the session
-    if (grant_context.client.id != session.client_id):
+    if (client.id != session.client_id):
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             error=constants.ErrorCode.INVALID_REQUEST,
@@ -235,17 +209,44 @@ async def get_valid_authorization_code_session(grant_context: schemas.GrantConte
             error=constants.ErrorCode.ACCESS_DENIED,
             error_description="access denied"
         )
-    # Ensure the PCKE extension
+
+    if (client.authn_method == constants.ClientAuthnMethod.SECRET):
+        if (grant_context.client_secret is None or not client.is_authenticated(client_secret=grant_context.client_secret)):
+            raise exceptions.HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                error=constants.ErrorCode.INVALID_REQUEST,
+                error_description="invalid credentials"
+            )
     if (session.code_challenge):
+        # Ensure the PCKE extension
         # Raise exception when code verifier is not provided or it doesn't match the code challenge
         if (grant_context.code_verifier is None
-           or not tools.verify_matches_challenge(code_verifier=grant_context.code_verifier, code_challenge=session.code_challenge)):
+           or not tools.is_pcke_valid(code_verifier=grant_context.code_verifier, code_challenge=session.code_challenge)):
             raise exceptions.HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 error=constants.ErrorCode.ACCESS_DENIED,
                 error_description="invalid code verifier"
             )
 
+
+async def get_valid_authorization_code_session(grant_context: schemas.GrantContext) -> schemas.AuthnSession:
+    """Get authentication session by using the authz code
+
+    Raises:
+        exceptions.HTTPException
+    """
+
+    # Ensure the authz code exists
+    if (grant_context.authz_code is None):
+        raise exceptions.HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error=constants.ErrorCode.INVALID_GRANT,
+            error_description="the authorization code cannot be null for the authorization_code grant"
+        )
+
+    session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
+    validate_session_and_grant_context(
+        grant_context=grant_context, session=session)
     return session
 
 

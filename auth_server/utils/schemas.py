@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from dataclasses import dataclass, field, asdict
 from typing import Any, List, Dict, Optional, Callable, Awaitable
 import bcrypt
@@ -200,8 +201,10 @@ class ScopeOut(Scope):
 
 @dataclass
 class ClientBase():
+    authn_method: constants.ClientAuthnMethod
     redirect_uris: List[str]
     response_types: List[constants.ResponseType]
+    grant_types: List[constants.GrantType]
     scopes: List[str]
     is_pcke_required: bool
 
@@ -210,19 +213,25 @@ class ClientBase():
 class ClientUpsert(ClientBase):
     token_model_id: str
     id: str = field(default_factory=tools.generate_client_id, init=False)
-    secret: str = field(
-        default_factory=tools.generate_client_secret, init=False
-    )
-    hashed_secret: str = field(init=False)
+    secret: str | None = field(init=False)
 
     def __post_init__(self) -> None:
-        self.hashed_secret = tools.hash_secret(secret=self.secret)
+        if (self.authn_method == constants.ClientAuthnMethod.NONE):
+            self.is_pcke_required = True
+        if (self.authn_method == constants.ClientAuthnMethod.SECRET):
+            self.secret = tools.generate_client_secret()
 
     def to_db_dict(self) -> Dict[str, Any]:
         self_dict = asdict(self)
         self_dict["redirect_uris"] = ",".join(self.redirect_uris)
         self_dict["response_types"] = ",".join(
             [r.value for r in self.response_types])
+        self_dict["grant_types"] = ",".join(
+            [gt.value for gt in self.grant_types])
+        self_dict["authn_method"] = self.authn_method.value
+        if (self.authn_method == constants.ClientAuthnMethod.SECRET):
+            self_dict["hashed_secret"] = tools.hash_secret(
+                secret=self.secret)  # type: ignore
         self_dict.pop("secret")
         return self_dict
 
@@ -230,22 +239,27 @@ class ClientUpsert(ClientBase):
 @dataclass
 class Client(ClientBase):
     id: str
-    hashed_secret: str
     token_model: TokenModel
+    hashed_secret: str | None
     secret: str | None = None
 
     def to_output(self) -> "ClientOut":
         return ClientOut(
             id=self.id,
+            authn_method=self.authn_method,
             secret=self.secret,
             redirect_uris=self.redirect_uris,
             response_types=self.response_types,
+            grant_types=self.grant_types,
             scopes=self.scopes,
             is_pcke_required=self.is_pcke_required,
             token_model_id=self.token_model.id
         )
 
     def is_authenticated(self, client_secret: str) -> bool:
+        if (self.hashed_secret is None):
+            return False
+
         return bcrypt.checkpw(
             password=client_secret.encode(constants.SECRET_ENCODING),
             hashed_password=self.hashed_secret.encode(
@@ -261,6 +275,9 @@ class Client(ClientBase):
     def is_response_type_allowed(self, response_type: constants.ResponseType) -> bool:
         return response_type in self.response_types
 
+    def is_grant_type_allowed(self, grant_type: constants.GrantType) -> bool:
+        return grant_type in self.grant_types
+
 #################### API Models ####################
 
 
@@ -270,9 +287,11 @@ class ClientIn(ClientBase):
 
     def to_upsert(self) -> ClientUpsert:
         return ClientUpsert(
+            authn_method=self.authn_method,
             redirect_uris=self.redirect_uris,
             response_types=self.response_types,
             scopes=self.scopes,
+            grant_types=self.grant_types,
             is_pcke_required=self.is_pcke_required,
             token_model_id=self.token_model_id
         )
@@ -290,6 +309,7 @@ class ClientOut(ClientBase):
 @dataclass
 class GrantContext:
     client: Client
+    client_secret: str | None
     token_model: TokenModel
     requested_scopes: List[str]
     redirect_uri: str | None

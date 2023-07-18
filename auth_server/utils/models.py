@@ -58,9 +58,12 @@ class Client(Base):
     __tablename__ = "clients"
 
     id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    hashed_secret: Mapped[str] = mapped_column(String(100))
+    authn_method: Mapped[str] = mapped_column(String(50))
+    hashed_secret: Mapped[str | None] = mapped_column(
+        String(100), nullable=True)
     redirect_uris: Mapped[str] = mapped_column(String(1000))
     response_types: Mapped[str] = mapped_column(String(100))
+    grant_types: Mapped[str] = mapped_column(String(200))
     is_pcke_required: Mapped[bool] = mapped_column(Boolean())
     scopes: Mapped[typing.List[Scope]] = relationship(
         secondary=Table(
@@ -78,11 +81,15 @@ class Client(Base):
     def to_schema(self, secret: str | None = None) -> schemas.Client:
         return schemas.Client(
             id=self.id,
+            authn_method=constants.ClientAuthnMethod(self.authn_method),
             secret=secret,
             hashed_secret=self.hashed_secret,
             redirect_uris=self.redirect_uris.split(","),
             response_types=[constants.ResponseType(
                 response_type) for response_type in self.response_types.split(",")],
+            grant_types=[constants.GrantType(
+                grant_type) for grant_type in self.grant_types.split(",")],
             scopes=[scope.name for scope in self.scopes],
+            is_pcke_required=self.is_pcke_required,
             token_model=self.token_model.to_schema()
         )
