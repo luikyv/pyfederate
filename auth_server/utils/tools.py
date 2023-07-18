@@ -8,6 +8,7 @@ from random import randint
 from urllib.parse import quote
 from hashlib import sha256
 import base64
+import json
 
 from . import constants
 
@@ -71,3 +72,11 @@ def is_pcke_valid(code_verifier: str, code_challenge: str) -> bool:
     return base64.urlsafe_b64encode(
         sha256(code_verifier.encode(constants.SECRET_ENCODING)).digest()
     ).decode(constants.SECRET_ENCODING) == code_challenge
+
+
+def to_base64_string(extra_params: Dict[str, str]) -> str:
+    return base64.b64encode(json.dumps(extra_params).encode(constants.SECRET_ENCODING)).decode(constants.SECRET_ENCODING)
+
+
+def to_json(base64_string: str) -> Dict[str, str]:
+    return json.loads(base64.b64decode(base64_string.encode(constants.SECRET_ENCODING)))

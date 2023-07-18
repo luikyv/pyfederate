@@ -73,7 +73,8 @@ class MockedClientManager(ClientManager):
             token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
             hashed_secret=tools.hash_secret(
                 client.secret) if (client.secret) else None,
-            secret=None
+            secret=None,
+            extra_params=client.extra_params
         )
         self.clients[client.id] = client_
 
@@ -97,7 +98,8 @@ class MockedClientManager(ClientManager):
             token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
             hashed_secret=tools.hash_secret(
                 client.secret) if (client.secret) else None,
-            secret=None
+            secret=None,
+            extra_params=client.extra_params
         )
         self.clients[client.id] = client_
 

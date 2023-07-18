@@ -199,7 +199,7 @@ class ScopeOut(Scope):
 ######################################## Client ########################################
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ClientBase():
     authn_method: constants.ClientAuthnMethod
     redirect_uris: List[str]
@@ -207,6 +207,7 @@ class ClientBase():
     grant_types: List[constants.GrantType]
     scopes: List[str]
     is_pcke_required: bool
+    extra_params: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -216,8 +217,9 @@ class ClientUpsert(ClientBase):
     secret: str | None = field(init=False)
 
     def __post_init__(self) -> None:
-        if (self.authn_method == constants.ClientAuthnMethod.NONE):
-            self.is_pcke_required = True
+        if (self.authn_method == constants.ClientAuthnMethod.NONE and self.is_pcke_required is False):
+            raise ValueError(
+                "Client without authentication method must require PCKE")
         if (self.authn_method == constants.ClientAuthnMethod.SECRET):
             self.secret = tools.generate_client_secret()
 
@@ -232,6 +234,8 @@ class ClientUpsert(ClientBase):
         if (self.authn_method == constants.ClientAuthnMethod.SECRET):
             self_dict["hashed_secret"] = tools.hash_secret(
                 secret=self.secret)  # type: ignore
+        self_dict["extra_params"] = tools.to_base64_string(
+            extra_params=self.extra_params)
         self_dict.pop("secret")
         return self_dict
 
@@ -253,7 +257,8 @@ class Client(ClientBase):
             grant_types=self.grant_types,
             scopes=self.scopes,
             is_pcke_required=self.is_pcke_required,
-            token_model_id=self.token_model.id
+            token_model_id=self.token_model.id,
+            extra_params=self.extra_params
         )
 
     def is_authenticated(self, client_secret: str) -> bool:
@@ -293,7 +298,8 @@ class ClientIn(ClientBase):
             scopes=self.scopes,
             grant_types=self.grant_types,
             is_pcke_required=self.is_pcke_required,
-            token_model_id=self.token_model_id
+            token_model_id=self.token_model_id,
+            extra_params=self.extra_params
         )
 
 

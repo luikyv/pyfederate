@@ -4,7 +4,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Table, Column, ForeignKey, String, Integer, Boolean
 
 from .constants import TokenType, SigningAlgorithm
-from . import schemas, constants
+from . import schemas, constants, tools
 
 
 class Base(DeclarativeBase):
@@ -65,6 +65,7 @@ class Client(Base):
     response_types: Mapped[str] = mapped_column(String(100))
     grant_types: Mapped[str] = mapped_column(String(200))
     is_pcke_required: Mapped[bool] = mapped_column(Boolean())
+    extra_params: Mapped[str] = mapped_column(String(1000))
     scopes: Mapped[typing.List[Scope]] = relationship(
         secondary=Table(
             "client_scope",
@@ -91,5 +92,6 @@ class Client(Base):
                 grant_type) for grant_type in self.grant_types.split(",")],
             scopes=[scope.name for scope in self.scopes],
             is_pcke_required=self.is_pcke_required,
-            token_model=self.token_model.to_schema()
+            token_model=self.token_model.to_schema(),
+            extra_params=tools.to_json(self.extra_params)
         )
