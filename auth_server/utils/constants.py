@@ -118,5 +118,6 @@ PRIVATE_JWKS: Dict[
 JWK_IDS_LITERAL = Literal[tuple(PRIVATE_JWKS.keys())]  # type: ignore
 CORRELATION_ID_HEADER_TYPE = Annotated[
     str | None,
-    Header(alias=HTTPHeaders.X_CORRELATION_ID.value)
+    Header(alias=HTTPHeaders.X_CORRELATION_ID.value,
+           description="ID that will added in the logs to help debugging")
 ]

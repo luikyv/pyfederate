@@ -95,8 +95,10 @@ def setup_telemetry(
 
 
 async def setup_session_by_callback_id(
-    callback_id: Annotated[str, Path(
-        min_length=constants.CALLBACK_ID_LENGTH, max_length=constants.CALLBACK_ID_LENGTH)]
+    callback_id: Annotated[
+        str,
+        Path(min_length=constants.CALLBACK_ID_LENGTH, max_length=constants.CALLBACK_ID_LENGTH,
+             description="ID generated during the /authorize")]
 ) -> schemas.AuthnSession:
     """
     Fetch the session associated to the callback_id if it exists and
@@ -186,6 +188,11 @@ def validate_session_and_grant_context(
     grant_context: schemas.GrantContext,
     session: schemas.AuthnSession
 ) -> None:
+    """Verify if the information in the grant context matches the information in the session
+
+    Raises:
+        exceptions.HTTPException
+    """
     client: schemas.Client = grant_context.client
 
     # Verify authz code validity
@@ -218,6 +225,7 @@ def validate_session_and_grant_context(
             error_description="access denied"
         )
 
+    # Authenticate the client
     if (client.authn_method == constants.ClientAuthnMethod.SECRET):
         if (grant_context.client_secret is None or not client.is_authenticated(client_secret=grant_context.client_secret)):
             raise exceptions.HTTPException(
@@ -238,7 +246,7 @@ def validate_session_and_grant_context(
 
 
 async def get_valid_authorization_code_session(grant_context: schemas.GrantContext) -> schemas.AuthnSession:
-    """Get authentication session by using the authz code
+    """Get a valid authentication session by using the authz code
 
     Raises:
         exceptions.HTTPException
@@ -270,6 +278,7 @@ async def authorization_code_token_handler(
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
+        # The user_id was already validated during get_valid_authorization_code_session
         subject=session.user_id,  # type: ignore
         scopes=session.requested_scopes,
         additional_claims=authn_policy.get_extra_token_claims(

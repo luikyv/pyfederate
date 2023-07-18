@@ -26,13 +26,24 @@ async def get_token(
         Query(min_length=constants.CLIENT_SECRET_MIN_LENGH,
               max_length=constants.CLIENT_SECRET_MAX_LENGH)
     ] = None,
-    code: Annotated[str | None, Query()] = None,
-    scope: Annotated[str | None, Query()] = None,
-    redirect_uri: Annotated[str | None, Query()] = None,
-    code_verifier: Annotated[str | None, Query(
-        min_length=43, max_length=128)] = None,
+    code: Annotated[
+        str | None,
+        Query(description="Authorization code")
+    ] = None,
+    scope: Annotated[
+        str | None,
+        Query(description="Space separeted list of scopes")
+    ] = None,
+    redirect_uri: Annotated[
+        str | None,
+        Query(description="URL informed during /authorize")
+    ] = None,
+    code_verifier: Annotated[
+        str | None,
+        Query(min_length=43, max_length=128, description="PCKE extension")
+    ] = None,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
-):
+) -> schemas.TokenResponse:
     if (not client.is_grant_type_allowed(grant_type=grant_type)):
         logger.info(
             f"The grant {grant_type.value} is not allowed to client {client.id}")
@@ -67,13 +78,23 @@ async def authorize(
     request: Request,
     client: Annotated[schemas.Client, Depends(helpers.get_valid_client_for_authorize)],
     # The redirect_uri and scope params are already validated when building the client above
-    redirect_uri: Annotated[str, Query()],
-    scope: Annotated[str, Query()],
-    state: Annotated[str, Query(max_length=constants.STATE_PARAM_MAX_LENGTH)],
-    code_challenge: Annotated[str | None, Query()] = None,
+    redirect_uri: Annotated[
+        str,
+        Query(description="URL to where the user will be redirected to once he is authenticated")
+    ],
+    scope: Annotated[str, Query("Space separeted list of scopes")],
+    state: Annotated[
+        str,
+        Query(max_length=constants.STATE_PARAM_MAX_LENGTH,
+              description="Random value that will be sent as-is in the redirect_uri. It protects the client against CSRF attacks")
+    ],
+    code_challenge: Annotated[
+        str | None,
+        Query(description="Used by the PCKE extension. This value is the hash of the code verifier")
+    ] = None,
     code_challenge_method: Annotated[
         constants.CodeChallengeMethod,
-        Query()
+        Query(description="Method used to generate the code challenge")
     ] = constants.CodeChallengeMethod.S256,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> Response:
