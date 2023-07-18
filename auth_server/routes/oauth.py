@@ -37,7 +37,7 @@ async def get_token(
             f"The grant {grant_type.value} is not allowed to client {client.id}")
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
+            error=constants.ErrorCode.UNAUTHORIZED_CLIENT,
             error_description="grant type not allowed"
         )
     logger.info(f"Client {client.id} started the grant {grant_type.value}")

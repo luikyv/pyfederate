@@ -139,8 +139,7 @@ class TokenModelIn(TokenModel):
     def __post_init__(self) -> None:
 
         if (self.token_type == constants.TokenType.JWT and self.key_id is None):
-            raise ValueError(
-                "JWT Token models must have a key_id and a signing_algorithm")
+            raise ValueError("JWT Token models must have a key_id")
 
     def to_upsert(self) -> TokenModelUpsert:
         return TokenModelUpsert(

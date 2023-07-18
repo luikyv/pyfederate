@@ -13,7 +13,7 @@ app.include_router(management.router)
 
 @app.get(
     "/healthcheck",
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_204_NO_CONTENT
 )
 def check_health() -> None:
     return

@@ -66,6 +66,7 @@ class ErrorCode(Enum):
     INVALID_CLIENT = "invalid_client"
     INVALID_GRANT = "invalid_grant"
     INVALID_SCOPE = "invalid_scope"
+    UNAUTHORIZED_CLIENT = "unauthorized_client"
 
 
 class AuthnStatus(Enum):

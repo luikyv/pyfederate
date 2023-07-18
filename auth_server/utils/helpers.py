@@ -131,7 +131,7 @@ async def client_credentials_token_handler(
     if (grant_context.client_secret is None or not client.is_authenticated(client_secret=grant_context.client_secret)):
         raise exceptions.HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            error=constants.ErrorCode.INVALID_REQUEST,
+            error=constants.ErrorCode.INVALID_CLIENT,
             error_description="invalid credentials"
         )
     # Check if the scopes requested are available to the client
@@ -174,8 +174,8 @@ async def setup_session_by_authz_code(
         )
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="Invalid authorization code"
+            error=constants.ErrorCode.INVALID_GRANT,
+            error_description="The authorization code is invalid or expired"
         )
 
     setup_telemetry(session=session)
@@ -192,14 +192,14 @@ def validate_session_and_grant_context(
     if (client.id != session.client_id):
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="invalid authorization code"
+            error=constants.ErrorCode.INVALID_GRANT,
+            error_description="The authorization code is invalid or expired"
         )
     # Ensure the redirect uri passed during the /authorize step is the same passed in the /token
     if (grant_context.redirect_uri is None or grant_context.redirect_uri != session.redirect_uri):
         raise exceptions.HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
+            error=constants.ErrorCode.INVALID_GRANT,
             error_description="invalid redirect uri"
         )
     # Ensure the user id is defined in the session
@@ -214,17 +214,17 @@ def validate_session_and_grant_context(
         if (grant_context.client_secret is None or not client.is_authenticated(client_secret=grant_context.client_secret)):
             raise exceptions.HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                error=constants.ErrorCode.INVALID_REQUEST,
+                error=constants.ErrorCode.INVALID_CLIENT,
                 error_description="invalid credentials"
             )
+    # Ensure the PCKE extension
     if (session.code_challenge):
-        # Ensure the PCKE extension
         # Raise exception when code verifier is not provided or it doesn't match the code challenge
         if (grant_context.code_verifier is None
            or not tools.is_pcke_valid(code_verifier=grant_context.code_verifier, code_challenge=session.code_challenge)):
             raise exceptions.HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                error=constants.ErrorCode.ACCESS_DENIED,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                error=constants.ErrorCode.INVALID_CLIENT,
                 error_description="invalid code verifier"
             )
 
