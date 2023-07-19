@@ -42,27 +42,30 @@ async def get_token(
         str | None,
         Query(min_length=43, max_length=128, description="PCKE extension")
     ] = None,
-    _: constants.CORRELATION_ID_HEADER_TYPE = None,
+    correlation_id: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> schemas.TokenResponse:
-    if (not client.is_grant_type_allowed(grant_type=grant_type)):
-        logger.info(
-            f"The grant {grant_type.value} is not allowed to client {client.id}")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.UNAUTHORIZED_CLIENT,
-            error_description="grant type not allowed"
-        )
+    # if (not client.is_grant_type_allowed(grant_type=grant_type)):
+    #     logger.info(
+    #         f"The grant {grant_type.value} is not allowed to client {client.id}")
+    #     raise exceptions.HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         error=constants.ErrorCode.UNAUTHORIZED_CLIENT,
+    #         error_description="grant type not allowed"
+    #     )
+
     logger.info(f"Client {client.id} started the grant {grant_type.value}")
     requested_scopes: List[str] = scope.split(" ") if scope is not None else []
 
     grant_context = schemas.GrantContext(
+        grant_type=grant_type,
         client=client,
-        client_secret=client_secret,
         token_model=client.token_model,
+        client_secret=client_secret,
         requested_scopes=requested_scopes,
         redirect_uri=redirect_uri,
         authz_code=code,
-        code_verifier=code_verifier
+        code_verifier=code_verifier,
+        correlation_id=correlation_id
     )
 
     return await helpers.grant_handlers[grant_type](

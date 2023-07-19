@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 from dataclasses import dataclass, field, asdict
 from typing import Any, List, Dict, Optional, Callable, Awaitable
 import bcrypt
@@ -7,8 +7,8 @@ import time
 from fastapi import Request, Response, status
 from fastapi.responses import RedirectResponse
 
-from . import constants, exceptions
-from .constants import TokenClaim, ErrorCode
+from . import constants, telemetry, exceptions
+from .constants import TokenClaim, ErrorCode, GrantType, ClientAuthnMethod
 from .import tools
 
 ######################################## Token ########################################
@@ -208,6 +208,17 @@ class ClientBase():
     is_pcke_required: bool
     extra_params: Dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if (constants.GrantType.AUTHORIZATION_CODE not in self.grant_types
+           and len(self.response_types) > 0):
+            raise ValueError(
+                "Response types are only allowed to the authorization code grant"
+            )
+        if (constants.GrantType.CLIENT_CREDENTIALS in self.grant_types and self.authn_method == ClientAuthnMethod.NONE):
+            raise ValueError(
+                "An authentication method must be provided for the client credentials grant"
+            )
+
 
 @dataclass
 class ClientUpsert(ClientBase):
@@ -311,15 +322,115 @@ class ClientOut(ClientBase):
 ######################################## OAuth ########################################
 
 
-@dataclass
-class GrantContext:
+class GrantContext(BaseModel):
+    grant_type: constants.GrantType
     client: Client
-    client_secret: str | None
     token_model: TokenModel
+    client_secret: str | None
     requested_scopes: List[str]
     redirect_uri: str | None
     authz_code: str | None
     code_verifier: str | None
+    correlation_id: constants.CORRELATION_ID_HEADER_TYPE
+
+    @model_validator(mode="after")
+    def grant_type_is_allowed(self) -> "GrantContext":
+        if (not self.client.is_grant_type_allowed(grant_type=self.grant_type)):
+            raise exceptions.GrantTypeNotAllowed()
+        return self
+
+    @model_validator(mode="after")
+    def client_is_authenticated(self) -> "GrantContext":
+        if (self.client.authn_method == constants.ClientAuthnMethod.SECRET):
+            if (self.client_secret is None or not self.client.is_authenticated(client_secret=self.client_secret)):
+                raise exceptions.ClientIsNotAuthenticated()
+        return self
+
+
+class ClientCredentialsContext(GrantContext):
+    @field_validator("grant_type")
+    def grant_type_is_client_credentials(cls, grant_type: GrantType) -> GrantType:
+        if (grant_type is not GrantType.CLIENT_CREDENTIALS):
+            raise exceptions.InvalidGrantType()
+        return grant_type
+
+    @model_validator(mode="after")
+    def client_authn_method_is_not_none(self) -> "ClientCredentialsContext":
+        if (self.client.authn_method == ClientAuthnMethod.NONE):
+            raise exceptions.ClientIsNotAuthenticated()
+        return self
+
+    @model_validator(mode="after")
+    def requested_scopes_are_allowed(self) -> "ClientCredentialsContext":
+        if (not self.client.are_scopes_allowed(requested_scopes=self.requested_scopes)):
+            raise exceptions.RequestedScopesAreNotAlloed()
+        return self
+
+    @model_validator(mode="after")
+    def some_fields_must_be_none(self) -> "ClientCredentialsContext":
+        """Some field in the grant context don't make sense for client credentials"""
+        if (self.redirect_uri or self.authz_code or self.code_verifier):
+            raise exceptions.ParameterNotAllowed()
+        return self
+
+
+class AuthorizationCodeContext(GrantContext):
+    session: "AuthnSession"
+
+    @model_validator(mode="after")
+    def validate_authz_code(self) -> "AuthorizationCodeContext":
+        authz_code_creation: int = (
+            self.session.authz_code_creation_timestamp if self.session.authz_code_creation_timestamp else 0
+        )
+        if (self.authz_code is None
+                or (tools.get_timestamp_now() >= authz_code_creation + constants.AUTHORIZATION_CODE_TIMEOUT)):
+            raise exceptions.InvalidAuthorizationCode()
+        return self
+
+    @model_validator(mode="after")
+    def client_id_must_match_session(self) -> "AuthorizationCodeContext":
+        if (self.client.id != self.session.client_id):
+            raise exceptions.InvalidClientID()
+        return self
+
+    @model_validator(mode="after")
+    def redirect_uri_must_match_session(self) -> "AuthorizationCodeContext":
+        if (self.redirect_uri != self.session.redirect_uri):
+            raise exceptions.InvalidRedirectURI()
+        return self
+
+    @field_validator("session")
+    def user_key_must_be_in_session(cls, session: "AuthnSession") -> "AuthnSession":
+        if (session.user_id is None):
+            raise exceptions.UnknownUserKey()
+        return session
+
+    @model_validator(mode="after")
+    def validate_pcke_requirement(self) -> "AuthorizationCodeContext":
+        if (self.client.is_pcke_required and self.session.code_challenge is None):
+            raise exceptions.InvalidPCKE()
+        return self
+
+    @model_validator(mode="after")
+    def validate_pcke(self) -> "AuthorizationCodeContext":
+        if (self.session.code_challenge):
+            # Raise exception when code verifier is not provided or it doesn't match the code challenge
+            if (self.code_verifier is None or not tools.is_pcke_valid(
+                code_verifier=self.code_verifier,
+                code_challenge=self.session.code_challenge
+            )):
+                raise exceptions.InvalidPCKE()
+        return self
+
+# @dataclass
+# class GrantContext:
+#     client: Client
+#     client_secret: str | None
+#     token_model: TokenModel
+#     requested_scopes: List[str]
+#     redirect_uri: str | None
+#     authz_code: str | None
+#     code_verifier: str | None
 
 
 @dataclass
