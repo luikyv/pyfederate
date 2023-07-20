@@ -135,21 +135,6 @@ async def client_credentials_token_handler(
     client_credentials_context = schemas.ClientCredentialsContext(
         **grant_context.model_dump())
 
-    # # Ensure the client is authenticated
-    # if (grant_context.client_secret is None or not client.is_authenticated(client_secret=grant_context.client_secret)):
-    #     raise exceptions.HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         error=constants.ErrorCode.INVALID_CLIENT,
-    #         error_description="invalid credentials"
-    #     )
-    # # Check if the scopes requested are available to the client
-    # if (not client.are_scopes_allowed(requested_scopes=grant_context.requested_scopes)):
-    #     raise exceptions.HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         error=constants.ErrorCode.INVALID_SCOPE,
-    #         error_description="the client does not have access to the required scopes"
-    #     )
-
     client: schemas.Client = grant_context.client
     token_model: schemas.TokenModel = client.token_model
     token: schemas.BearerToken = token_model.generate_token(
@@ -180,88 +165,6 @@ async def setup_session_by_authz_code(
     return session
 
 
-# def validate_session_and_grant_context(
-#     grant_context: schemas.GrantContext,
-#     session: schemas.AuthnSession
-# ) -> None:
-#     """Verify if the information in the grant context matches the information in the session
-
-#     Raises:
-#         exceptions.HTTPException
-#     """
-#     client: schemas.Client = grant_context.client
-
-#     # Verify authz code validity
-#     if (tools.get_timestamp_now() >= (session.authz_code_creation_timestamp if session.authz_code_creation_timestamp else 0) + constants.AUTHORIZATION_CODE_TIMEOUT):
-#         raise exceptions.HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             error=constants.ErrorCode.INVALID_GRANT,
-#             error_description="The authorization code is invalid or expired"
-#         )
-
-#     # Ensure the client is the same one defined in the session
-#     if (client.id != session.client_id):
-#         raise exceptions.HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             error=constants.ErrorCode.INVALID_CLIENT,
-#             error_description="invalid credentials"
-#         )
-#     # Ensure the redirect uri passed during the /authorize step is the same passed in the /token
-#     if (grant_context.redirect_uri is None or grant_context.redirect_uri != session.redirect_uri):
-#         raise exceptions.HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             error=constants.ErrorCode.INVALID_GRANT,
-#             error_description="invalid redirect uri"
-#         )
-#     # Ensure the user id is defined in the session
-#     if (session.user_id is None):
-#         raise exceptions.HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             error=constants.ErrorCode.ACCESS_DENIED,
-#             error_description="access denied"
-#         )
-
-#     # Authenticate the client
-#     if (client.authn_method == constants.ClientAuthnMethod.SECRET):
-#         if (grant_context.client_secret is None or not client.is_authenticated(client_secret=grant_context.client_secret)):
-#             raise exceptions.HTTPException(
-#                 status_code=status.HTTP_401_UNAUTHORIZED,
-#                 error=constants.ErrorCode.INVALID_CLIENT,
-#                 error_description="invalid credentials"
-#             )
-#     # Ensure the PCKE extension
-#     if (session.code_challenge):
-#         # Raise exception when code verifier is not provided or it doesn't match the code challenge
-#         if (grant_context.code_verifier is None
-#            or not tools.is_pcke_valid(code_verifier=grant_context.code_verifier, code_challenge=session.code_challenge)):
-#             raise exceptions.HTTPException(
-#                 status_code=status.HTTP_401_UNAUTHORIZED,
-#                 error=constants.ErrorCode.INVALID_CLIENT,
-#                 error_description="invalid code verifier"
-#             )
-
-
-# async def get_valid_authorization_code_session(grant_context: schemas.GrantContext) -> schemas.AuthnSession:
-#     """Get a valid authentication session by using the authz code
-
-#     Raises:
-#         exceptions.HTTPException
-#     """
-
-#     # Ensure the authz code exists
-#     if (grant_context.authz_code is None):
-#         raise exceptions.HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             error=constants.ErrorCode.INVALID_GRANT,
-#             error_description="the authorization code cannot be null for the authorization_code grant"
-#         )
-
-#     session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
-#     validate_session_and_grant_context(
-#         grant_context=grant_context, session=session)
-#     return session
-
-
 async def authorization_code_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
@@ -269,8 +172,9 @@ async def authorization_code_token_handler(
     if (grant_context.authz_code is None):
         raise exceptions.InvalidAuthorizationCode()
     session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
+    # Create a valid grant context
     authz_code_context = schemas.AuthorizationCodeContext(
-        **grant_context.model_dump())
+        **grant_context.model_dump(), session=session)
 
     client: schemas.Client = authz_code_context.client
     token_model: schemas.TokenModel = authz_code_context.token_model
@@ -278,7 +182,7 @@ async def authorization_code_token_handler(
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
-        # The user_id was already validated by the validators in AuthorizationCodeContextvalidated
+        # The user_id was already validated by the validators in AuthorizationCodeContext
         subject=session.user_id,  # type: ignore
         scopes=session.requested_scopes,
         additional_claims=authn_policy.get_extra_token_claims(

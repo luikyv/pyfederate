@@ -44,14 +44,6 @@ async def get_token(
     ] = None,
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> schemas.TokenResponse:
-    # if (not client.is_grant_type_allowed(grant_type=grant_type)):
-    #     logger.info(
-    #         f"The grant {grant_type.value} is not allowed to client {client.id}")
-    #     raise exceptions.HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         error=constants.ErrorCode.UNAUTHORIZED_CLIENT,
-    #         error_description="grant type not allowed"
-    #     )
 
     logger.info(f"Client {client.id} started the grant {grant_type.value}")
     requested_scopes: List[str] = scope.split(" ") if scope is not None else []

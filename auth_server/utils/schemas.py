@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator, Field
 from dataclasses import dataclass, field, asdict
 from typing import Any, List, Dict, Optional, Callable, Awaitable
 import bcrypt
@@ -7,7 +7,7 @@ import time
 from fastapi import Request, Response, status
 from fastapi.responses import RedirectResponse
 
-from . import constants, telemetry, exceptions
+from . import constants, exceptions
 from .constants import TokenClaim, ErrorCode, GrantType, ClientAuthnMethod
 from .import tools
 
@@ -198,64 +198,63 @@ class ScopeOut(Scope):
 ######################################## Client ########################################
 
 
-@dataclass(kw_only=True)
-class ClientBase():
+class ClientBase(BaseModel):
     authn_method: constants.ClientAuthnMethod
     redirect_uris: List[str]
     response_types: List[constants.ResponseType]
     grant_types: List[constants.GrantType]
     scopes: List[str]
     is_pcke_required: bool
-    extra_params: Dict[str, str] = field(default_factory=dict)
+    extra_params: Dict[str, str] = Field(default_factory=dict)
 
-    def __post_init__(self) -> None:
+    @model_validator(mode="after")
+    def only_authz_code_has_response_types(self) -> "ClientBase":
+        """Response type are only allowed for the authorization code grant type"""
         if (constants.GrantType.AUTHORIZATION_CODE not in self.grant_types
-           and len(self.response_types) > 0):
+           and self.response_types):
             raise ValueError(
                 "Response types are only allowed to the authorization code grant"
             )
-        if (constants.GrantType.CLIENT_CREDENTIALS in self.grant_types and self.authn_method == ClientAuthnMethod.NONE):
+        return self
+
+    @model_validator(mode="after")
+    def client_credentials_authn_method(self) -> "ClientBase":
+        """Clients allowed to perform client credentials must have an authn method"""
+        if (constants.GrantType.CLIENT_CREDENTIALS in self.grant_types
+                and self.authn_method == ClientAuthnMethod.NONE):
             raise ValueError(
                 "An authentication method must be provided for the client credentials grant"
             )
+        return self
+
+    @model_validator(mode="after")
+    def client_without_authn_method_must_require_pcke(self) -> "ClientBase":
+
+        if (self.authn_method == ClientAuthnMethod.NONE and not self.is_pcke_required):
+            raise ValueError(
+                "Clients without an authentication method must require PCKE"
+            )
+        return self
 
 
-@dataclass
 class ClientUpsert(ClientBase):
     token_model_id: str
-    id: str = field(default_factory=tools.generate_client_id, init=False)
-    secret: str | None = field(init=False)
+    id: str = Field(default_factory=tools.generate_client_id)
+    secret: str | None = None
 
-    def __post_init__(self) -> None:
-        if (self.authn_method == constants.ClientAuthnMethod.NONE and self.is_pcke_required is False):
-            raise ValueError(
-                "Client without authentication method must require PCKE")
-        if (self.authn_method == constants.ClientAuthnMethod.SECRET):
+    @model_validator(mode="after")
+    def setup_secret_authentication(self) -> "ClientUpsert":
+        if self.authn_method == ClientAuthnMethod.SECRET:
             self.secret = tools.generate_client_secret()
 
-    def to_db_dict(self) -> Dict[str, Any]:
-        self_dict = asdict(self)
-        self_dict["redirect_uris"] = ",".join(self.redirect_uris)
-        self_dict["response_types"] = ",".join(
-            [r.value for r in self.response_types])
-        self_dict["grant_types"] = ",".join(
-            [gt.value for gt in self.grant_types])
-        self_dict["authn_method"] = self.authn_method.value
-        if (self.authn_method == constants.ClientAuthnMethod.SECRET):
-            self_dict["hashed_secret"] = tools.hash_secret(
-                secret=self.secret)  # type: ignore
-        self_dict["extra_params"] = tools.to_base64_string(
-            extra_params=self.extra_params)
-        self_dict.pop("secret")
-        return self_dict
+        return self
 
 
-@dataclass
 class Client(ClientBase):
     id: str
     token_model: TokenModel
-    hashed_secret: str | None
     secret: str | None = None
+    hashed_secret: str | None
 
     def to_output(self) -> "ClientOut":
         return ClientOut(
@@ -271,7 +270,7 @@ class Client(ClientBase):
             extra_params=self.extra_params
         )
 
-    def is_authenticated(self, client_secret: str) -> bool:
+    def is_authenticated_by_secret(self, client_secret: str) -> bool:
         if (self.hashed_secret is None):
             return False
 
@@ -296,7 +295,6 @@ class Client(ClientBase):
 #################### API Models ####################
 
 
-@dataclass
 class ClientIn(ClientBase):
     token_model_id: str
 
@@ -313,7 +311,6 @@ class ClientIn(ClientBase):
         )
 
 
-@dataclass
 class ClientOut(ClientBase):
     id: str
     token_model_id: str
@@ -333,21 +330,25 @@ class GrantContext(BaseModel):
     code_verifier: str | None
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE
 
+
+class BaseGrantContext(GrantContext):
+    """Class to hold common grant context validations"""
+
     @model_validator(mode="after")
-    def grant_type_is_allowed(self) -> "GrantContext":
+    def grant_type_is_allowed(self) -> "BaseGrantContext":
         if (not self.client.is_grant_type_allowed(grant_type=self.grant_type)):
             raise exceptions.GrantTypeNotAllowed()
         return self
 
     @model_validator(mode="after")
-    def client_is_authenticated(self) -> "GrantContext":
+    def client_is_authenticated(self) -> "BaseGrantContext":
         if (self.client.authn_method == constants.ClientAuthnMethod.SECRET):
-            if (self.client_secret is None or not self.client.is_authenticated(client_secret=self.client_secret)):
+            if (self.client_secret is None or not self.client.is_authenticated_by_secret(client_secret=self.client_secret)):
                 raise exceptions.ClientIsNotAuthenticated()
         return self
 
 
-class ClientCredentialsContext(GrantContext):
+class ClientCredentialsContext(BaseGrantContext):
     @field_validator("grant_type")
     def grant_type_is_client_credentials(cls, grant_type: GrantType) -> GrantType:
         if (grant_type is not GrantType.CLIENT_CREDENTIALS):
@@ -374,8 +375,14 @@ class ClientCredentialsContext(GrantContext):
         return self
 
 
-class AuthorizationCodeContext(GrantContext):
+class AuthorizationCodeContext(BaseGrantContext):
     session: "AuthnSession"
+
+    @field_validator("grant_type")
+    def grant_type_is_authz_code(cls, grant_type: GrantType) -> GrantType:
+        if (grant_type is not GrantType.AUTHORIZATION_CODE):
+            raise exceptions.InvalidGrantType()
+        return grant_type
 
     @model_validator(mode="after")
     def validate_authz_code(self) -> "AuthorizationCodeContext":
@@ -421,16 +428,6 @@ class AuthorizationCodeContext(GrantContext):
             )):
                 raise exceptions.InvalidPCKE()
         return self
-
-# @dataclass
-# class GrantContext:
-#     client: Client
-#     client_secret: str | None
-#     token_model: TokenModel
-#     requested_scopes: List[str]
-#     redirect_uri: str | None
-#     authz_code: str | None
-#     code_verifier: str | None
 
 
 @dataclass
@@ -489,7 +486,7 @@ class AuthnStepInProgressResult(AuthnStepResult):
 
 @dataclass
 class AuthnStepFailureResult(AuthnStepResult):
-    error_description: str
+    error_description: str | None = None
     status: constants.AuthnStatus = field(
         default=constants.AuthnStatus.FAILURE, init=False
     )
@@ -498,7 +495,7 @@ class AuthnStepFailureResult(AuthnStepResult):
         return RedirectResponse(
             url=tools.prepare_redirect_url(url=session.redirect_uri, params={
                 "error": ErrorCode.ACCESS_DENIED.value,
-                "error_description": self.error_description,
+                "error_description": self.error_description if self.error_description else "access denied",
             }),
             status_code=status.HTTP_303_SEE_OTHER
         )
@@ -561,8 +558,10 @@ class AuthnPolicy():
     id: str
     is_available: Callable[[Client, Request], bool]
     first_step: AuthnStep
-    get_extra_token_claims: Callable[[
-        AuthnSession], Dict[str, str]] | None = None
+    get_extra_token_claims: Callable[
+        [AuthnSession],
+        Dict[str, str]
+    ] | None = None
 
     def __post_init__(self) -> None:
         # Make sure the policy id is unique

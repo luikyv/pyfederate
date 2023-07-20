@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
 
 from .. import models, schemas, telemetry, tools, exceptions
+from ..constants import ClientAuthnMethod
 from .token_manager import TokenModelManager
 
 logger = telemetry.get_logger(__name__)
@@ -70,15 +71,20 @@ class MockedClientManager(ClientManager):
             grant_types=client.grant_types,
             scopes=client.scopes,
             is_pcke_required=client.is_pcke_required,
-            token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
+            token_model=await self.token_manager.get_token_model(
+                token_model_id=client.token_model_id
+            ),
             hashed_secret=tools.hash_secret(
-                client.secret) if (client.secret) else None,
-            secret=None,
+                secret=client.secret
+            ) if client.secret else None,
+            secret=client.secret,
             extra_params=client.extra_params
         )
-        self.clients[client.id] = client_
+        # Save the client without its secret
+        self.clients[client.id] = schemas.Client(
+            **{**client_.model_dump(), "secret": None}
+        )
 
-        client_.secret = client.secret
         return client_
 
     async def update_client(self, client: schemas.ClientUpsert) -> schemas.Client:
@@ -95,24 +101,30 @@ class MockedClientManager(ClientManager):
             grant_types=client.grant_types,
             scopes=client.scopes,
             is_pcke_required=client.is_pcke_required,
-            token_model=await self.token_manager.get_token_model(token_model_id=client.token_model_id),
+            token_model=await self.token_manager.get_token_model(
+                token_model_id=client.token_model_id
+            ),
             hashed_secret=tools.hash_secret(
-                client.secret) if (client.secret) else None,
-            secret=None,
+                secret=client.secret
+            ) if client.secret else None,
+            secret=client.secret,
             extra_params=client.extra_params
         )
-        self.clients[client.id] = client_
+        # Save the client without its secret
+        self.clients[client.id] = schemas.Client(
+            **{**client_.model_dump(), "secret": None}
+        )
 
-        client_.secret = client.secret
         return client_
 
     async def get_client(self, client_id: str) -> schemas.Client:
 
-        if (client_id not in self.clients):
+        client: schemas.Client | None = self.clients.get(client_id, None)
+        if not client:
             logger.info(f"Client with ID: {client_id} does not exist")
             raise exceptions.ClientDoesNotExist()
 
-        return self.clients[client_id]
+        return client
 
     async def get_clients(self) -> typing.List[schemas.Client]:
         return list(self.clients.values())
@@ -132,11 +144,11 @@ class OLTPClientManager(ClientManager):
 
         with Session(self.engine) as db:
 
-            client_db = models.Client(**client.to_db_dict())
             scopes_db: typing.List[models.Scope] = db.query(models.Scope).filter(
                 models.Scope.name.in_(client.scopes)
             ).all()
-            client_db.scopes = scopes_db
+            client_db = models.Client.to_db_model(
+                client=client, scopes=scopes_db)
 
             db.add(client_db)
             db.commit()
