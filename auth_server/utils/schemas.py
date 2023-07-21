@@ -197,6 +197,7 @@ class ClientUpsert(ClientBase):
 
     @model_validator(mode="after")
     def setup_secret_authentication(self) -> "ClientUpsert":
+        """Set up secret authentication"""
         if self.authn_method == ClientAuthnMethod.SECRET:
             self.secret = tools.generate_client_secret()
 
@@ -209,18 +210,7 @@ class Client(ClientBase):
     hashed_secret: str | None
 
     def to_output(self) -> "ClientOut":
-        return ClientOut(
-            id=self.id,
-            authn_method=self.authn_method,
-            secret=self.secret,
-            redirect_uris=self.redirect_uris,
-            response_types=self.response_types,
-            grant_types=self.grant_types,
-            scopes=self.scopes,
-            is_pcke_required=self.is_pcke_required,
-            token_model_id=self.token_model.id,
-            extra_params=self.extra_params
-        )
+        return ClientOut(**self.model_dump())
 
     def is_authenticated_by_secret(self, client_secret: str) -> bool:
         if (self.hashed_secret is None):
@@ -252,17 +242,7 @@ class ClientIn(ClientBase):
     token_model_id: str
 
     def to_upsert(self) -> ClientUpsert:
-        return ClientUpsert(
-            id=self.id,
-            authn_method=self.authn_method,
-            redirect_uris=self.redirect_uris,
-            response_types=self.response_types,
-            scopes=self.scopes,
-            grant_types=self.grant_types,
-            is_pcke_required=self.is_pcke_required,
-            token_model_id=self.token_model_id,
-            extra_params=self.extra_params
-        )
+        return ClientUpsert(**self.model_dump())
 
     @model_validator(mode="after")
     def only_authz_code_has_response_types(self) -> "ClientIn":
@@ -300,6 +280,8 @@ class ClientOut(ClientBase):
 
 ######################################## OAuth ########################################
 
+#################### /token ####################
+
 
 class GrantContext(BaseModel):
     grant_type: constants.GrantType
@@ -313,24 +295,24 @@ class GrantContext(BaseModel):
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE
 
 
-class BaseGrantContext(GrantContext):
+class CommonValidationsGrantContext(GrantContext):
     """Class to hold common grant context validations"""
 
     @model_validator(mode="after")
-    def grant_type_is_allowed(self) -> "BaseGrantContext":
+    def grant_type_is_allowed(self) -> "CommonValidationsGrantContext":
         if (not self.client.is_grant_type_allowed(grant_type=self.grant_type)):
             raise exceptions.GrantTypeNotAllowed()
         return self
 
     @model_validator(mode="after")
-    def client_is_authenticated(self) -> "BaseGrantContext":
+    def client_is_authenticated(self) -> "CommonValidationsGrantContext":
         if (self.client.authn_method == constants.ClientAuthnMethod.SECRET):
             if (self.client_secret is None or not self.client.is_authenticated_by_secret(client_secret=self.client_secret)):
                 raise exceptions.ClientIsNotAuthenticated()
         return self
 
 
-class ClientCredentialsContext(BaseGrantContext):
+class ClientCredentialsContext(CommonValidationsGrantContext):
     @field_validator("grant_type")
     def grant_type_is_client_credentials(cls, grant_type: GrantType) -> GrantType:
         if (grant_type is not GrantType.CLIENT_CREDENTIALS):
@@ -346,7 +328,7 @@ class ClientCredentialsContext(BaseGrantContext):
     @model_validator(mode="after")
     def requested_scopes_are_allowed(self) -> "ClientCredentialsContext":
         if (not self.client.are_scopes_allowed(requested_scopes=self.requested_scopes)):
-            raise exceptions.RequestedScopesAreNotAlloed()
+            raise exceptions.RequestedScopesAreNotAllowedException()
         return self
 
     @model_validator(mode="after")
@@ -357,7 +339,7 @@ class ClientCredentialsContext(BaseGrantContext):
         return self
 
 
-class AuthorizationCodeContext(BaseGrantContext):
+class AuthorizationCodeContext(CommonValidationsGrantContext):
     session: "AuthnSession"
 
     @field_validator("grant_type")
@@ -404,10 +386,10 @@ class AuthorizationCodeContext(BaseGrantContext):
     def validate_pcke(self) -> "AuthorizationCodeContext":
         if (self.session.code_challenge):
             # Raise exception when code verifier is not provided or it doesn't match the code challenge
-            if (self.code_verifier is None or not tools.is_pcke_valid(
+            if self.code_verifier is None or not tools.is_pcke_valid(
                 code_verifier=self.code_verifier,
                 code_challenge=self.session.code_challenge
-            )):
+            ):
                 raise exceptions.InvalidPCKE()
         return self
 
@@ -419,6 +401,35 @@ class TokenResponse():
     token_type: str = field(default=constants.BEARER_TOKEN_TYPE)
     refresh_token: str | None = None
     scope: str | None = None
+
+#################### /authorize ####################
+
+
+class AuthorizeContext(BaseModel):
+    client: Client
+    requested_scopes: List[str]
+    response_type: constants.ResponseType
+    redirect_uri: str
+    code_challenge: str | None
+    code_challenge_method: constants.CodeChallengeMethod
+
+    @model_validator(mode="after")
+    def validate_scopes(self: "AuthorizeContext") -> "AuthorizeContext":
+        if not self.client.are_scopes_allowed(requested_scopes=self.requested_scopes):
+            raise exceptions.RequestedScopesAreNotAllowedException()
+        return self
+
+    @model_validator(mode="after")
+    def validate_response_type(self: "AuthorizeContext") -> "AuthorizeContext":
+        if not self.client.is_response_type_allowed(response_type=self.response_type):
+            raise exceptions.ResponseTypeIsNotAllowedException()
+        return self
+
+    @model_validator(mode="after")
+    def validate_pcke_requirement(self: "AuthorizeContext") -> "AuthorizeContext":
+        if self.client.is_pcke_required and self.code_challenge is None:
+            raise exceptions.PCKEIsRequiredException()
+        return self
 
 ######################################## Session ########################################
 

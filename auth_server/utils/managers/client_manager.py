@@ -81,9 +81,8 @@ class MockedClientManager(ClientManager):
             extra_params=client.extra_params
         )
         # Save the client without its secret
-        self.clients[client.id] = schemas.Client(
-            **{**client_.model_dump(), "secret": None}
-        )
+        self.clients[client.id] = client_
+        # self.clients[client.id].secret = None
 
         return client_
 
@@ -111,9 +110,7 @@ class MockedClientManager(ClientManager):
             extra_params=client.extra_params
         )
         # Save the client without its secret
-        self.clients[client.id] = schemas.Client(
-            **{**client_.model_dump(), "secret": None}
-        )
+        self.clients[client.id] = client_.model_copy(update={"secret": None})
 
         return client_
 
@@ -124,6 +121,7 @@ class MockedClientManager(ClientManager):
             logger.info(f"Client with ID: {client_id} does not exist")
             raise exceptions.ClientDoesNotExist()
 
+        logger.info(f"==============> {str(client.model_dump())}")
         return client
 
     async def get_clients(self) -> typing.List[schemas.Client]:

@@ -44,8 +44,8 @@ async def get_token(
     ] = None,
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> schemas.TokenResponse:
+    logger.info(f"TOKEN MODEL ID: {client.token_model.id}")
 
-    logger.info(f"Client {client.id} started the grant {grant_type.value}")
     requested_scopes: List[str] = scope.split(" ") if scope is not None else []
 
     grant_context = schemas.GrantContext(
@@ -71,8 +71,8 @@ async def get_token(
 )
 async def authorize(
     request: Request,
-    client: Annotated[schemas.Client, Depends(helpers.get_valid_client_for_authorize)],
-    # The redirect_uri and scope params are already validated when building the client above
+    client: Annotated[schemas.Client, Depends(helpers.get_client)],
+    response_type: Annotated[constants.ResponseType, Query()],
     redirect_uri: Annotated[
         str,
         Query(description="URL to where the user will be redirected to once he is authenticated")
@@ -94,18 +94,19 @@ async def authorize(
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> Response:
 
-    try:
-        authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(
-            client=client, request=request)
-        logger.info(f"Policy retrieved")
-    except exceptions.NoAuthenticationPoliciesAvailable:
-        logger.error(
-            f"No authentication policy found for client with ID: {client.id}")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="no policy found"
-        )
+    # When creating the AuthorizeContext, the defined validation run
+    schemas.AuthorizeContext(
+        client=client,
+        requested_scopes=scope.split(" "),
+        response_type=response_type,
+        redirect_uri=redirect_uri,
+        code_challenge=code_challenge,
+        code_challenge_method=code_challenge_method
+    )
+    authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(
+        client=client, request=request
+    )
+    logger.info(f"Policy retrieved")
 
     session = schemas.AuthnSession(
         id=tools.generate_session_id(),
@@ -135,6 +136,5 @@ async def authorize(
 async def callback_authorize(
     session: Annotated[schemas.AuthnSession, Depends(helpers.setup_session_by_callback_id)],
     request: Request,
-    _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ):
     return await helpers.manage_authentication(session, request)

@@ -75,7 +75,15 @@ class ClientIsNotAuthenticated(Exception):
     pass
 
 
-class RequestedScopesAreNotAlloed(Exception):
+class RequestedScopesAreNotAllowedException(Exception):
+    pass
+
+
+class ResponseTypeIsNotAllowedException(Exception):
+    pass
+
+
+class PCKEIsRequiredException(Exception):
     pass
 
 

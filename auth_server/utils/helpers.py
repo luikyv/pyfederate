@@ -22,63 +22,6 @@ async def get_client(
     return await auth_manager.client_manager.get_client(client_id=client_id)
 
 
-async def get_valid_client_for_authorize(
-    client_id: Annotated[
-        str,
-        Query(min_length=constants.CLIENT_ID_MIN_LENGH,
-              max_length=constants.CLIENT_ID_MAX_LENGH)
-    ],
-    scope: Annotated[str, Query()],
-    response_type: Annotated[constants.ResponseType, Query()],
-    redirect_uri: Annotated[str, Query()],
-    code_challenge: Annotated[
-        str | None,
-        Query(description="Used by the PCKE extension. This value is the hash of the code verifier")
-    ] = None,
-    code_challenge_method: Annotated[
-        constants.CodeChallengeMethod,
-        Query(description="Method used to generate the code challenge")
-    ] = constants.CodeChallengeMethod.S256,
-) -> schemas.Client:
-
-    client: schemas.Client = await get_client(client_id=client_id)
-
-    # Check if the scopes requested are available to the client
-    if (not client.are_scopes_allowed(requested_scopes=scope.split(" "))):
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            error=constants.ErrorCode.INVALID_SCOPE,
-            error_description="the client does not have access to the required scopes"
-        )
-    # Check if the request_uri belongs to the client
-    if (not client.owns_redirect_uri(redirect_uri=redirect_uri)):
-        logger.info(
-            f"The client with ID: {client.id} doesn't own the redict_uri: {redirect_uri}")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="invalid redirect_uri"
-        )
-    # Check if the requested response type is allowed for the client
-    if (not client.is_response_type_allowed(response_type=response_type)):
-        logger.info(
-            f"The response type: {response_type} is not available to the client with ID: {client.id}")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="invalid redirect_uri"
-        )
-    # Check if the PCKE extension is mandatory
-    if (client.is_pcke_required and code_challenge is None):
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="pcke is required"
-        )
-
-    return client
-
-
 def setup_telemetry(
     session: schemas.AuthnSession
 ) -> None:
@@ -99,16 +42,7 @@ async def setup_session_by_callback_id(
     set the tracking and correlation IDs using the session information
     """
 
-    try:
-        session: schemas.AuthnSession = await auth_manager.session_manager.get_session_by_callback_id(callback_id=callback_id)
-    except exceptions.SessionInfoDoesNotExist:
-        logger.info(
-            f"The callback ID: {callback_id} has no session associated with it")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error=constants.ErrorCode.INVALID_REQUEST,
-            error_description="Invalid callback ID"
-        )
+    session: schemas.AuthnSession = await auth_manager.session_manager.get_session_by_callback_id(callback_id=callback_id)
 
     setup_telemetry(session=session)
     return session
@@ -122,6 +56,7 @@ async def client_credentials_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
 
+    # When creating the ClientCredentialsContext, the defined validation run
     client_credentials_context = schemas.ClientCredentialsContext(
         **grant_context.model_dump())
 
@@ -170,6 +105,7 @@ async def authorization_code_token_handler(
     token_model: schemas.TokenModel = authz_code_context.token_model
     # Generate token
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
+    logger.info(str(token_model.model_dump()))
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
         # The user_id was already validated by the validators in AuthorizationCodeContext

@@ -69,6 +69,7 @@ class MockedTokenModelManager(TokenModelManager):
                 signing_algorithm=constants.PRIVATE_JWKS[
                     token_model.key_id].signing_algorithm,  # type: ignore
             )
+
         return self.token_models[token_model.id]
 
     async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
