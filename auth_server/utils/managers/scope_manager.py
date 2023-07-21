@@ -61,7 +61,7 @@ class MockedScopeManager(ScopeManager):
             logger.info(f"{scope.name} already exists")
             raise exceptions.ScopeAlreadyExists()
 
-        self.scopes[scope.name] = schemas.Scope(**asdict(scope))
+        self.scopes[scope.name] = schemas.Scope(**scope.model_dump())
 
     async def update_scope(self, scope: schemas.ScopeUpsert) -> None:
 
@@ -69,7 +69,7 @@ class MockedScopeManager(ScopeManager):
             logger.info(f"{scope.name} does not exist")
             raise exceptions.ScopeDoesNotExist()
 
-        self.scopes[scope.name] = schemas.Scope(**asdict(scope))
+        self.scopes[scope.name] = schemas.Scope(**scope.model_dump())
 
     async def get_scope(self, scope_name: str) -> schemas.Scope:
 
@@ -94,9 +94,7 @@ class OLTPScopeManager(ScopeManager):
         self.engine = engine
 
     async def create_scope(self, scope: schemas.Scope) -> None:
-        scope_db = models.Scope(
-            **asdict(scope)
-        )
+        scope_db = models.Scope.to_db_model(scope=scope)
         with Session(self.engine) as db:
             db.add(scope_db)
             db.commit()

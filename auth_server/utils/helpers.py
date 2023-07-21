@@ -19,17 +19,7 @@ async def get_client(
         ]
 ) -> schemas.Client:
 
-    try:
-        client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
-    except exceptions.ClientDoesNotExist:
-        logger.info(f"The client with ID: {client_id} does not exists")
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            error=constants.ErrorCode.INVALID_CLIENT,
-            error_description="invalid credentials"
-        )
-
-    return client
+    return await auth_manager.client_manager.get_client(client_id=client_id)
 
 
 async def get_valid_client_for_authorize(

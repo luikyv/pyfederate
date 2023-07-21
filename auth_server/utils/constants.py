@@ -96,7 +96,7 @@ BEARER_TOKEN_TYPE = "Bearer"
 class JWKInfo:
     key_id: str
     key: str
-    signing_algorithm: str
+    signing_algorithm: SigningAlgorithm
 
 
 # Load the privates JWKs
@@ -106,7 +106,7 @@ PRIVATE_JWKS: Dict[
     key["kid"]: JWKInfo(
         key_id=key["kid"],
         key=key["k"],
-        signing_algorithm=key["alg"]
+        signing_algorithm=SigningAlgorithm(key["alg"])
     ) for key in json.loads(
         # The privates jwks are passed as a base64 enconded json through the env var PRIVATE_JWKS_JSON
         base64.b64decode(os.environ["PRIVATE_JWKS_JSON"]).decode(

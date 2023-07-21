@@ -47,8 +47,7 @@ class BearerToken:
     token: str
 
 
-@dataclass
-class TokenModel():
+class TokenModel(BaseModel):
     id: str
     issuer: str
     expires_in: int
@@ -66,23 +65,11 @@ class TokenModel():
         raise NotImplementedError()
 
 
-@dataclass
 class TokenModelUpsert(TokenModel):
     token_type: constants.TokenType
     key_id: str | None
 
-    def to_db_dict(self) -> Dict[str, Any]:
-        self_dict = asdict(self)
 
-        self_dict["token_type"] = self.token_type.value
-        return self_dict
-
-    def __post_init__(self) -> None:
-        if (self.token_type == constants.TokenType.JWT and self.key_id is None):
-            raise ValueError("JWT tokens must be associated to a key")
-
-
-@dataclass
 class JWTTokenModel(TokenModel):
     key_id: str
     key: str
@@ -96,7 +83,7 @@ class JWTTokenModel(TokenModel):
         additional_claims: Dict[str, str]
     ) -> BearerToken:
 
-        timestamp_now = int(time.time())
+        timestamp_now = tools.get_timestamp_now()
         token_info = TokenInfo(
             subject=subject,
             issuer=self.issuer,
@@ -131,15 +118,15 @@ class JWTTokenModel(TokenModel):
 #################### API Models ####################
 
 
-@dataclass
 class TokenModelIn(TokenModel):
     token_type: constants.TokenType
     key_id: constants.JWK_IDS_LITERAL | None
 
-    def __post_init__(self) -> None:
-
-        if (self.token_type == constants.TokenType.JWT and self.key_id is None):
-            raise ValueError("JWT Token models must have a key_id")
+    @model_validator(mode="after")
+    def jwt_tokens_must_have_key_id(self: "TokenModelIn") -> "TokenModelIn":
+        if self.token_type == constants.TokenType.JWT and self.key_id is None:
+            raise exceptions.JWTModelMustHaveKeyIDException()
+        return self
 
     def to_upsert(self) -> TokenModelUpsert:
         return TokenModelUpsert(
@@ -151,7 +138,6 @@ class TokenModelIn(TokenModel):
         )
 
 
-@dataclass
 class TokenModelOut(TokenModel):
     token_type: constants.TokenType
     key_id: str | None
@@ -160,8 +146,7 @@ class TokenModelOut(TokenModel):
 ######################################## Scope ########################################
 
 
-@dataclass
-class Scope():
+class Scope(BaseModel):
     name: str
     description: str
 
@@ -172,11 +157,8 @@ class Scope():
         )
 
 
-@dataclass
 class ScopeUpsert(Scope):
-    def to_db_dict(self) -> Dict[str, Any]:
-        self_dict = asdict(self)
-        return self_dict
+    pass
 
 #################### API Models ####################
 
@@ -199,6 +181,7 @@ class ScopeOut(Scope):
 
 
 class ClientBase(BaseModel):
+    id: str
     authn_method: constants.ClientAuthnMethod
     redirect_uris: List[str]
     response_types: List[constants.ResponseType]
@@ -207,39 +190,9 @@ class ClientBase(BaseModel):
     is_pcke_required: bool
     extra_params: Dict[str, str] = Field(default_factory=dict)
 
-    @model_validator(mode="after")
-    def only_authz_code_has_response_types(self) -> "ClientBase":
-        """Response type are only allowed for the authorization code grant type"""
-        if (constants.GrantType.AUTHORIZATION_CODE not in self.grant_types
-           and self.response_types):
-            raise ValueError(
-                "Response types are only allowed to the authorization code grant"
-            )
-        return self
-
-    @model_validator(mode="after")
-    def client_credentials_authn_method(self) -> "ClientBase":
-        """Clients allowed to perform client credentials must have an authn method"""
-        if (constants.GrantType.CLIENT_CREDENTIALS in self.grant_types
-                and self.authn_method == ClientAuthnMethod.NONE):
-            raise ValueError(
-                "An authentication method must be provided for the client credentials grant"
-            )
-        return self
-
-    @model_validator(mode="after")
-    def client_without_authn_method_must_require_pcke(self) -> "ClientBase":
-
-        if (self.authn_method == ClientAuthnMethod.NONE and not self.is_pcke_required):
-            raise ValueError(
-                "Clients without an authentication method must require PCKE"
-            )
-        return self
-
 
 class ClientUpsert(ClientBase):
     token_model_id: str
-    id: str = Field(default_factory=tools.generate_client_id)
     secret: str | None = None
 
     @model_validator(mode="after")
@@ -251,7 +204,6 @@ class ClientUpsert(ClientBase):
 
 
 class Client(ClientBase):
-    id: str
     token_model: TokenModel
     secret: str | None = None
     hashed_secret: str | None
@@ -296,10 +248,12 @@ class Client(ClientBase):
 
 
 class ClientIn(ClientBase):
+    id: str = Field(default_factory=tools.generate_client_id)
     token_model_id: str
 
     def to_upsert(self) -> ClientUpsert:
         return ClientUpsert(
+            id=self.id,
             authn_method=self.authn_method,
             redirect_uris=self.redirect_uris,
             response_types=self.response_types,
@@ -310,9 +264,37 @@ class ClientIn(ClientBase):
             extra_params=self.extra_params
         )
 
+    @model_validator(mode="after")
+    def only_authz_code_has_response_types(self) -> "ClientIn":
+        """Response type are only allowed for the authorization code grant type"""
+        if (constants.GrantType.AUTHORIZATION_CODE not in self.grant_types
+           and self.response_types):
+            raise ValueError(
+                "Response types are only allowed to the authorization code grant"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def client_credentials_authn_method(self) -> "ClientIn":
+        """Clients allowed to perform client credentials must have an authn method"""
+        if (constants.GrantType.CLIENT_CREDENTIALS in self.grant_types
+                and self.authn_method == ClientAuthnMethod.NONE):
+            raise ValueError(
+                "An authentication method must be provided for the client credentials grant"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def client_without_authn_method_must_require_pcke(self) -> "ClientIn":
+
+        if (self.authn_method == ClientAuthnMethod.NONE and not self.is_pcke_required):
+            raise ValueError(
+                "Clients without an authentication method must require PCKE"
+            )
+        return self
+
 
 class ClientOut(ClientBase):
-    id: str
     token_model_id: str
     secret: str | None = None
 

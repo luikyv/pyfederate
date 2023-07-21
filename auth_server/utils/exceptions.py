@@ -105,3 +105,7 @@ class InvalidPCKE(Exception):
 
 class GrantTypeNotAllowed(Exception):
     pass
+
+
+class JWTModelMustHaveKeyIDException(Exception):
+    pass

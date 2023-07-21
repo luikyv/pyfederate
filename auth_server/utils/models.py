@@ -25,8 +25,8 @@ class TokenModel(Base):
     ] = mapped_column(String(10), nullable=True)
 
     def to_schema(self) -> schemas.TokenModel:
-        if (self.token_type == TokenType.JWT.value):
-            if (self.key_id is None):
+        if self.token_type == TokenType.JWT.value:
+            if self.key_id is None:
                 raise RuntimeError("The key id is never null for jwt tokens")
 
             jwk: constants.JWKInfo = constants.PRIVATE_JWKS[self.key_id]
@@ -36,10 +36,26 @@ class TokenModel(Base):
                 expires_in=self.expires_in,
                 key_id=self.key_id,
                 key=jwk.key,
-                signing_algorithm=SigningAlgorithm(jwk.signing_algorithm)
+                signing_algorithm=jwk.signing_algorithm
             )
 
         raise NotImplementedError()
+
+    @classmethod
+    def to_db_model(
+        cls,
+        token_model: schemas.TokenModelUpsert
+    ) -> "TokenModel":
+        return TokenModel(
+            id=token_model.id,
+            token_type=token_model.token_type.value,
+            issuer=token_model.issuer,
+            expires_in=token_model.expires_in,
+            key_id=token_model.key_id,
+            signing_algorithm=constants.PRIVATE_JWKS[
+                token_model.key_id
+            ].signing_algorithm if token_model.key_id else None
+        )
 
 
 class Scope(Base):
@@ -52,6 +68,17 @@ class Scope(Base):
         return schemas.Scope(
             name=self.name,
             description=self.description
+        )
+
+    @classmethod
+    def to_db_model(
+        cls,
+        scope: schemas.Scope
+    ) -> "Scope":
+
+        return Scope(
+            name=scope.name,
+            description=scope.description
         )
 
 

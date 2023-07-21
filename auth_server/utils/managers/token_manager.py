@@ -58,7 +58,7 @@ class MockedTokenModelManager(TokenModelManager):
                 f"Token model with ID: {token_model.id} already exists")
             raise exceptions.TokenModelAlreadyExists()
 
-        if (token_model.token_type == constants.TokenType.JWT):
+        if token_model.token_type == constants.TokenType.JWT:
             self.token_models[token_model.id] = schemas.JWTTokenModel(
                 id=token_model.id,
                 issuer=token_model.issuer,
@@ -66,8 +66,8 @@ class MockedTokenModelManager(TokenModelManager):
                 key_id=token_model.key_id,  # type: ignore
                 key=constants.PRIVATE_JWKS[
                     token_model.key_id].key,  # type: ignore
-                signing_algorithm=constants.SigningAlgorithm(
-                    constants.PRIVATE_JWKS[token_model.key_id].signing_algorithm),  # type: ignore
+                signing_algorithm=constants.PRIVATE_JWKS[
+                    token_model.key_id].signing_algorithm,  # type: ignore
             )
         return self.token_models[token_model.id]
 
@@ -98,12 +98,11 @@ class OLTPTokenModelManager(TokenModelManager):
         self.engine = engine
 
     async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
-        with Session(self.engine) as db:
 
-            token_model_db = models.TokenModel(**token_model.to_db_dict())
+        token_model_db = models.TokenModel.to_db_model(token_model=token_model)
+        with Session(self.engine) as db:
             db.add(token_model_db)
             db.commit()
-
             return token_model_db.to_schema()
 
     async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
