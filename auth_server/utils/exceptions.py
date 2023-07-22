@@ -1,119 +1,126 @@
 from . import constants
 
 
-class HTTPException(Exception):
+# class HTTPException(Exception):
 
-    def __init__(
-        self,
-        status_code: int,
-        error: constants.ErrorCode,
-        error_description: str,
-    ) -> None:
+#     def __init__(
+#         self,
+#         status_code: int,
+#         error: constants.ErrorCode,
+#         error_description: str,
+#     ) -> None:
 
-        self.status_code = status_code
-        self.error = error
-        self.error_description = error_description
+#         self.status_code = status_code
+#         self.error = error
+#         self.error_description = error_description
 
-    def __repr__(self) -> str:
-        class_name = self.__class__.__name__
-        return f"{class_name}(status_code={self.status_code!r}, error={self.error.value} error_description={self.error_description!r})"
+#     def __repr__(self) -> str:
+#         class_name = self.__class__.__name__
+#         return f"{class_name}(status_code={self.status_code!r}, error={self.error.value} error_description={self.error_description!r})"
 
 
-class TokenModelAlreadyExists(Exception):
+class CustomException(Exception):
+    def __init__(self, message: str | None = None) -> None:
+        self.message = message
+        if message:
+            super().__init__(message)
+
+
+class TokenModelAlreadyExistsException(CustomException):
     pass
 
 
-class TokenModelDoesNotExist(Exception):
+class TokenModelDoesNotExistException(CustomException):
     pass
 
 
-class ScopeAlreadyExists(Exception):
+class ScopeAlreadyExistsException(CustomException):
     pass
 
 
-class ScopeDoesNotExist(Exception):
+class ScopeDoesNotExistException(CustomException):
     pass
 
 
-class ClientAlreadyExists(Exception):
+class ClientAlreadyExistsException(CustomException):
     pass
 
 
-class ClientDoesNotExist(Exception):
+class ClientDoesNotExistException(CustomException):
     pass
 
 
-class SessionInfoAlreadyExists(Exception):
+class SessionInfoAlreadyExistsException(CustomException):
     pass
 
 
-class SessionInfoDoesNotExist(Exception):
+class SessionInfoDoesNotExistException(CustomException):
     pass
 
 
-class AuthnStepAlreadyExistsException(Exception):
+class AuthnStepAlreadyExistsException(CustomException):
     pass
 
 
-class NoAuthenticationPoliciesAvailable(Exception):
+class NoAuthenticationPoliciesAvailableException(CustomException):
     pass
 
 
-class AuthnPolicyAlreadyExistsException(Exception):
+class AuthnPolicyAlreadyExistsException(CustomException):
     pass
 
 
-class PolicyFinishedWithoudMappingTheUserID(Exception):
+class PolicyFinishedWithoudMappingTheUserIDException(CustomException):
     pass
 
 
-class InvalidGrantType(Exception):
+class InvalidGrantTypeException(CustomException):
     pass
 
 
-class ClientIsNotAuthenticated(Exception):
+class ClientIsNotAuthenticatedException(CustomException):
     pass
 
 
-class RequestedScopesAreNotAllowedException(Exception):
+class RequestedScopesAreNotAllowedException(CustomException):
     pass
 
 
-class ResponseTypeIsNotAllowedException(Exception):
+class ResponseTypeIsNotAllowedException(CustomException):
     pass
 
 
-class PCKEIsRequiredException(Exception):
+class PCKEIsRequiredException(CustomException):
     pass
 
 
-class ParameterNotAllowed(Exception):
+class ParameterNotAllowedException(CustomException):
     pass
 
 
-class InvalidAuthorizationCode(Exception):
+class InvalidAuthorizationCodeException(CustomException):
     pass
 
 
-class InvalidClientID(Exception):
+class InvalidClientIDException(CustomException):
     pass
 
 
-class InvalidRedirectURI(Exception):
+class InvalidRedirectURIException(CustomException):
     pass
 
 
-class UnknownUserKey(Exception):
+class UnknownUserKeyException(CustomException):
     pass
 
 
-class InvalidPCKE(Exception):
+class InvalidPCKEException(CustomException):
     pass
 
 
-class GrantTypeNotAllowed(Exception):
+class GrantTypeNotAllowedException(CustomException):
     pass
 
 
-class JWTModelMustHaveKeyIDException(Exception):
+class JWTModelMustHaveKeyIDException(CustomException):
     pass

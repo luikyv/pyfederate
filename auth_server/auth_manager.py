@@ -78,7 +78,7 @@ class AuthManager():
             self.authn_policies
         ))
         if (len(available_policies) == 0):
-            raise exceptions.NoAuthenticationPoliciesAvailable()
+            raise exceptions.NoAuthenticationPoliciesAvailableException()
 
         return available_policies[0]
 

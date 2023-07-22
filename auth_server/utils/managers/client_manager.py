@@ -61,7 +61,7 @@ class MockedClientManager(ClientManager):
 
         if (client.id in self.clients):
             logger.info(f"Client with ID: {client.id} already exists")
-            raise exceptions.ClientAlreadyExists()
+            raise exceptions.ClientAlreadyExistsException()
 
         client_ = schemas.Client(
             id=client.id,
@@ -90,7 +90,7 @@ class MockedClientManager(ClientManager):
 
         if (client.id not in self.clients):
             logger.info(f"Client with ID: {client.id} does not exist")
-            raise exceptions.ClientDoesNotExist()
+            raise exceptions.ClientDoesNotExistException()
 
         client_ = schemas.Client(
             id=client.id,
@@ -119,7 +119,7 @@ class MockedClientManager(ClientManager):
         client: schemas.Client | None = self.clients.get(client_id, None)
         if not client:
             logger.info(f"Client with ID: {client_id} does not exist")
-            raise exceptions.ClientDoesNotExist()
+            raise exceptions.ClientDoesNotExistException()
 
         return client
 
@@ -162,7 +162,7 @@ class OLTPClientManager(ClientManager):
                 models.Client.id == client_id).first()
 
         if (client_db is None):
-            raise exceptions.ClientDoesNotExist()
+            raise exceptions.ClientDoesNotExistException()
 
         return client_db.to_schema()
 

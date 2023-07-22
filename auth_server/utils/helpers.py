@@ -104,7 +104,7 @@ async def authorization_code_token_handler(
 ) -> schemas.TokenResponse:
 
     if (grant_context.authz_code is None):
-        raise exceptions.InvalidAuthorizationCode()
+        raise exceptions.InvalidAuthorizationCodeException()
     session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
     # When creating the AuthorizationCodeGrantContext, the validations run
     authz_code_context = schemas.AuthorizationCodeGrantContext(

@@ -10,6 +10,8 @@ app = FastAPI()
 app.include_router(oauth.router)
 app.include_router(management.router)
 
+######################################## Shared ########################################
+
 
 @app.get(
     "/healthcheck",
@@ -37,13 +39,82 @@ async def set_telemetry_ids(request: Request, call_next) -> Response:
 
     return response
 
+######################################## Exceptions ########################################
 
-@app.exception_handler(exceptions.HTTPException)
-def handle_general_http_exception(_: Request, exc: exceptions.HTTPException):
+
+@app.exception_handler(exceptions.TokenModelAlreadyExistsException)
+def handle_token_model_already_exists_exception(_: Request, exc: exceptions.TokenModelAlreadyExistsException):
     return JSONResponse(
-        status_code=exc.status_code,
+        status_code=status.HTTP_400_BAD_REQUEST,
         content={
-            "error": exc.error.value,
-            "error_description": exc.error_description
+            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error_description": exc.message if exc else "token model id already exists"
+        },
+    )
+
+
+@app.exception_handler(exceptions.TokenModelDoesNotExistException)
+def handle_token_model_does_not_exist_exception(_: Request, exc: exceptions.TokenModelDoesNotExistException):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error_description": exc.message if exc else "token model id does not exist"
+        },
+    )
+
+
+@app.exception_handler(exceptions.ScopeAlreadyExistsException)
+def handle_scope_already_exists_exception(_: Request, exc: exceptions.ScopeAlreadyExistsException):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error_description": exc.message if exc else "scope already exists"
+        },
+    )
+
+
+@app.exception_handler(exceptions.ScopeDoesNotExistException)
+def handle_scope_does_not_exist_exception(_: Request, exc: exceptions.ScopeDoesNotExistException):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error_description": exc.message if exc else "scope does not exist"
+        },
+    )
+
+
+@app.exception_handler(exceptions.ClientAlreadyExistsException)
+def handle_client_already_exists_exception(_: Request, exc: exceptions.ClientAlreadyExistsException):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error_description": exc.message if exc else "client already exists"
+        },
+    )
+
+
+@app.exception_handler(exceptions.ClientDoesNotExistException)
+def handle_client_does_not_exist_exception(_: Request, exc: exceptions.ClientDoesNotExistException):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error_description": exc.message if exc else "client does not exist"
+        },
+    )
+
+
+@app.exception_handler(exceptions.SessionInfoDoesNotExistException)
+def handle_authn_session_does_not_exist_exception(_: Request, exc: exceptions.SessionInfoDoesNotExistException):
+    # TODO: Continue
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error_description": exc.message if exc else "client does not exist"
         },
     )

@@ -13,7 +13,7 @@ logger = telemetry.get_logger(__name__)
 class TokenModelManager(ABC):
 
     @abstractmethod
-    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
+    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.BaseTokenModel:
         """
         Throws:
             exceptions.TokenModelAlreadyExists
@@ -21,7 +21,7 @@ class TokenModelManager(ABC):
         pass
 
     @abstractmethod
-    async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
+    async def get_token_model(self, token_model_id: str) -> schemas.BaseTokenModel:
         """
         Throws:
             exceptions.TokenModelDoesNotExist
@@ -29,7 +29,7 @@ class TokenModelManager(ABC):
         pass
 
     @abstractmethod
-    async def get_token_models(self) -> typing.List[schemas.TokenModel]:
+    async def get_token_models(self) -> typing.List[schemas.BaseTokenModel]:
         pass
 
     @abstractmethod
@@ -56,7 +56,7 @@ class MockedTokenModelManager(TokenModelManager):
         if (token_model.id in self.token_models):
             logger.info(
                 f"Token model with ID: {token_model.id} already exists")
-            raise exceptions.TokenModelAlreadyExists()
+            raise exceptions.TokenModelAlreadyExistsException()
 
         if token_model.token_type == constants.TokenType.JWT:
             self.token_models[token_model.id] = schemas.JWTTokenModel(
@@ -77,7 +77,7 @@ class MockedTokenModelManager(TokenModelManager):
         if (token_model_id not in self.token_models):
             logger.info(
                 f"Token model with ID: {token_model_id} does not exist")
-            raise exceptions.TokenModelDoesNotExist()
+            raise exceptions.TokenModelDoesNotExistException()
 
         return self.token_models[token_model_id]
 
@@ -98,7 +98,7 @@ class OLTPTokenModelManager(TokenModelManager):
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
-    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
+    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.BaseTokenModel:
 
         token_model_db = models.TokenModel.to_db_model(token_model=token_model)
         with Session(self.engine) as db:
@@ -106,18 +106,18 @@ class OLTPTokenModelManager(TokenModelManager):
             db.commit()
             return token_model_db.to_schema()
 
-    async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
+    async def get_token_model(self, token_model_id: str) -> schemas.BaseTokenModel:
 
         with Session(self.engine) as db:
             token_model_db = db.query(models.TokenModel).filter(
                 models.TokenModel.id == token_model_id).first()
 
         if (token_model_db is None):
-            raise exceptions.TokenModelDoesNotExist()
+            raise exceptions.TokenModelDoesNotExistException()
 
         return token_model_db.to_schema()
 
-    async def get_token_models(self) -> typing.List[schemas.TokenModel]:
+    async def get_token_models(self) -> typing.List[schemas.BaseTokenModel]:
 
         with Session(self.engine) as db:
             token_models_db: typing.List[models.TokenModel] = db.query(

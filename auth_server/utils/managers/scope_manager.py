@@ -59,7 +59,7 @@ class MockedScopeManager(ScopeManager):
 
         if (scope.name in self.scopes):
             logger.info(f"{scope.name} already exists")
-            raise exceptions.ScopeAlreadyExists()
+            raise exceptions.ScopeAlreadyExistsException()
 
         self.scopes[scope.name] = schemas.Scope(**scope.model_dump())
 
@@ -67,7 +67,7 @@ class MockedScopeManager(ScopeManager):
 
         if (scope.name not in self.scopes):
             logger.info(f"{scope.name} does not exist")
-            raise exceptions.ScopeDoesNotExist()
+            raise exceptions.ScopeDoesNotExistException()
 
         self.scopes[scope.name] = schemas.Scope(**scope.model_dump())
 
@@ -75,7 +75,7 @@ class MockedScopeManager(ScopeManager):
 
         if (scope_name not in self.scopes):
             logger.info(f"{scope_name} does not exist")
-            raise exceptions.ScopeDoesNotExist()
+            raise exceptions.ScopeDoesNotExistException()
 
         return self.scopes[scope_name]
 
@@ -108,7 +108,7 @@ class OLTPScopeManager(ScopeManager):
                 models.Scope.name == scope_name).first()
 
         if (scope_db is None):
-            raise exceptions.ScopeDoesNotExist()
+            raise exceptions.ScopeDoesNotExistException()
 
         return scope_db.to_schema()
 

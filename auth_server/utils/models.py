@@ -24,7 +24,7 @@ class TokenModel(Base):
         str | None
     ] = mapped_column(String(10), nullable=True)
 
-    def to_schema(self) -> schemas.TokenModel:
+    def to_schema(self) -> schemas.BaseTokenModel:
         if self.token_type == TokenType.JWT.value:
             if self.key_id is None:
                 raise RuntimeError("The key id is never null for jwt tokens")
