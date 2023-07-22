@@ -56,12 +56,21 @@ async def client_credentials_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
 
-    # When creating the ClientCredentialsContext, the defined validation run
-    client_credentials_context = schemas.ClientCredentialsContext(
-        **grant_context.model_dump())
+    # When creating the ClientCredentialsContext, the validations run
+    client_credentials_context = schemas.ClientCredentialsGrantContext(
+        grant_type=GrantType.CLIENT_CREDENTIALS,
+        client=grant_context.client,
+        token_model=grant_context.token_model,
+        client_secret=grant_context.client_secret,
+        requested_scopes=grant_context.requested_scopes,
+        redirect_uri=grant_context.redirect_uri,
+        authz_code=grant_context.authz_code,
+        code_verifier=grant_context.code_verifier,
+        correlation_id=grant_context.correlation_id
+    )
 
-    client: schemas.Client = grant_context.client
-    token_model: schemas.TokenModel = client.token_model
+    client: schemas.Client = client_credentials_context.client
+    token_model: schemas.TokenModel = client_credentials_context.token_model
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
         subject=client.id,
@@ -97,15 +106,24 @@ async def authorization_code_token_handler(
     if (grant_context.authz_code is None):
         raise exceptions.InvalidAuthorizationCode()
     session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
-    # Create a valid grant context
-    authz_code_context = schemas.AuthorizationCodeContext(
-        **grant_context.model_dump(), session=session)
+    # When creating the AuthorizationCodeGrantContext, the validations run
+    authz_code_context = schemas.AuthorizationCodeGrantContext(
+        grant_type=GrantType.AUTHORIZATION_CODE,
+        client=grant_context.client,
+        token_model=grant_context.token_model,
+        client_secret=grant_context.client_secret,
+        requested_scopes=grant_context.requested_scopes,
+        redirect_uri=grant_context.redirect_uri,
+        authz_code=grant_context.authz_code,
+        code_verifier=grant_context.code_verifier,
+        correlation_id=grant_context.correlation_id,
+        session=session
+    )
 
     client: schemas.Client = authz_code_context.client
     token_model: schemas.TokenModel = authz_code_context.token_model
     # Generate token
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
-    logger.info(str(token_model.model_dump()))
     token: schemas.BearerToken = token_model.generate_token(
         client_id=client.id,
         # The user_id was already validated by the validators in AuthorizationCodeContext

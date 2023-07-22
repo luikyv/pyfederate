@@ -121,7 +121,6 @@ class MockedClientManager(ClientManager):
             logger.info(f"Client with ID: {client_id} does not exist")
             raise exceptions.ClientDoesNotExist()
 
-        logger.info(f"==============> {str(client.model_dump())}")
         return client
 
     async def get_clients(self) -> typing.List[schemas.Client]:

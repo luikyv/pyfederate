@@ -1,9 +1,8 @@
 from pydantic import BaseModel, field_validator, model_validator, Field
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Any, List, Dict, Optional, Callable, Awaitable
 import bcrypt
 import jwt
-import time
 from fastapi import Request, Response, status
 from fastapi.responses import RedirectResponse
 
@@ -312,7 +311,7 @@ class CommonValidationsGrantContext(GrantContext):
         return self
 
 
-class ClientCredentialsContext(CommonValidationsGrantContext):
+class ClientCredentialsGrantContext(CommonValidationsGrantContext):
     @field_validator("grant_type")
     def grant_type_is_client_credentials(cls, grant_type: GrantType) -> GrantType:
         if (grant_type is not GrantType.CLIENT_CREDENTIALS):
@@ -320,26 +319,26 @@ class ClientCredentialsContext(CommonValidationsGrantContext):
         return grant_type
 
     @model_validator(mode="after")
-    def client_authn_method_is_not_none(self) -> "ClientCredentialsContext":
+    def client_authn_method_is_not_none(self) -> "ClientCredentialsGrantContext":
         if (self.client.authn_method == ClientAuthnMethod.NONE):
             raise exceptions.ClientIsNotAuthenticated()
         return self
 
     @model_validator(mode="after")
-    def requested_scopes_are_allowed(self) -> "ClientCredentialsContext":
+    def requested_scopes_are_allowed(self) -> "ClientCredentialsGrantContext":
         if (not self.client.are_scopes_allowed(requested_scopes=self.requested_scopes)):
             raise exceptions.RequestedScopesAreNotAllowedException()
         return self
 
     @model_validator(mode="after")
-    def some_fields_must_be_none(self) -> "ClientCredentialsContext":
+    def some_fields_must_be_none(self) -> "ClientCredentialsGrantContext":
         """Some field in the grant context don't make sense for client credentials"""
         if (self.redirect_uri or self.authz_code or self.code_verifier):
             raise exceptions.ParameterNotAllowed()
         return self
 
 
-class AuthorizationCodeContext(CommonValidationsGrantContext):
+class AuthorizationCodeGrantContext(CommonValidationsGrantContext):
     session: "AuthnSession"
 
     @field_validator("grant_type")
@@ -349,7 +348,7 @@ class AuthorizationCodeContext(CommonValidationsGrantContext):
         return grant_type
 
     @model_validator(mode="after")
-    def validate_authz_code(self) -> "AuthorizationCodeContext":
+    def validate_authz_code(self) -> "AuthorizationCodeGrantContext":
         authz_code_creation: int = (
             self.session.authz_code_creation_timestamp if self.session.authz_code_creation_timestamp else 0
         )
@@ -359,32 +358,32 @@ class AuthorizationCodeContext(CommonValidationsGrantContext):
         return self
 
     @model_validator(mode="after")
-    def client_id_must_match_session(self) -> "AuthorizationCodeContext":
-        if (self.client.id != self.session.client_id):
+    def client_id_must_match_session(self) -> "AuthorizationCodeGrantContext":
+        if self.client.id != self.session.client_id:
             raise exceptions.InvalidClientID()
         return self
 
     @model_validator(mode="after")
-    def redirect_uri_must_match_session(self) -> "AuthorizationCodeContext":
-        if (self.redirect_uri != self.session.redirect_uri):
+    def redirect_uri_must_match_session(self) -> "AuthorizationCodeGrantContext":
+        if self.redirect_uri != self.session.redirect_uri:
             raise exceptions.InvalidRedirectURI()
         return self
 
     @field_validator("session")
     def user_key_must_be_in_session(cls, session: "AuthnSession") -> "AuthnSession":
-        if (session.user_id is None):
+        if session.user_id is None:
             raise exceptions.UnknownUserKey()
         return session
 
     @model_validator(mode="after")
-    def validate_pcke_requirement(self) -> "AuthorizationCodeContext":
-        if (self.client.is_pcke_required and self.session.code_challenge is None):
+    def validate_pcke_requirement(self) -> "AuthorizationCodeGrantContext":
+        if self.client.is_pcke_required and self.session.code_challenge is None:
             raise exceptions.InvalidPCKE()
         return self
 
     @model_validator(mode="after")
-    def validate_pcke(self) -> "AuthorizationCodeContext":
-        if (self.session.code_challenge):
+    def validate_pcke(self) -> "AuthorizationCodeGrantContext":
+        if self.session.code_challenge:
             # Raise exception when code verifier is not provided or it doesn't match the code challenge
             if self.code_verifier is None or not tools.is_pcke_valid(
                 code_verifier=self.code_verifier,
@@ -394,11 +393,10 @@ class AuthorizationCodeContext(CommonValidationsGrantContext):
         return self
 
 
-@dataclass
-class TokenResponse():
+class TokenResponse(BaseModel):
     access_token: str
     expires_in: int
-    token_type: str = field(default=constants.BEARER_TOKEN_TYPE)
+    token_type: str = Field(default=constants.BEARER_TOKEN_TYPE)
     refresh_token: str | None = None
     scope: str | None = None
 
