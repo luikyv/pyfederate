@@ -124,3 +124,7 @@ class GrantTypeNotAllowedException(CustomException):
 
 class JWTModelMustHaveKeyIDException(CustomException):
     pass
+
+
+class AuthzCodeAlreadyIssuedException(CustomException):
+    """The authorization code was already issue for a given callback id"""

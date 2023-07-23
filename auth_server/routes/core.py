@@ -48,7 +48,7 @@ def handle_token_model_already_exists_exception(_: Request, exc: exceptions.Toke
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
             "error": constants.ErrorCode.INVALID_REQUEST,
-            "error_description": exc.message if exc else "token model id already exists"
+            "error_description": exc.message if exc.message else "token model id already exists"
         },
     )
 
@@ -59,7 +59,7 @@ def handle_token_model_does_not_exist_exception(_: Request, exc: exceptions.Toke
         status_code=status.HTTP_404_NOT_FOUND,
         content={
             "error": constants.ErrorCode.INVALID_REQUEST,
-            "error_description": exc.message if exc else "token model id does not exist"
+            "error_description": exc.message if exc.message else "token model id does not exist"
         },
     )
 
@@ -70,7 +70,7 @@ def handle_scope_already_exists_exception(_: Request, exc: exceptions.ScopeAlrea
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
             "error": constants.ErrorCode.INVALID_REQUEST,
-            "error_description": exc.message if exc else "scope already exists"
+            "error_description": exc.message if exc.message else "scope already exists"
         },
     )
 
@@ -81,7 +81,7 @@ def handle_scope_does_not_exist_exception(_: Request, exc: exceptions.ScopeDoesN
         status_code=status.HTTP_404_NOT_FOUND,
         content={
             "error": constants.ErrorCode.INVALID_REQUEST,
-            "error_description": exc.message if exc else "scope does not exist"
+            "error_description": exc.message if exc.message else "scope does not exist"
         },
     )
 
@@ -92,7 +92,7 @@ def handle_client_already_exists_exception(_: Request, exc: exceptions.ClientAlr
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
             "error": constants.ErrorCode.INVALID_REQUEST,
-            "error_description": exc.message if exc else "client already exists"
+            "error_description": exc.message if exc.message else "client already exists"
         },
     )
 
@@ -103,18 +103,39 @@ def handle_client_does_not_exist_exception(_: Request, exc: exceptions.ClientDoe
         status_code=status.HTTP_404_NOT_FOUND,
         content={
             "error": constants.ErrorCode.INVALID_REQUEST,
-            "error_description": exc.message if exc else "client does not exist"
+            "error_description": exc.message if exc.message else "client does not exist"
         },
     )
 
 
 @app.exception_handler(exceptions.SessionInfoDoesNotExistException)
 def handle_authn_session_does_not_exist_exception(_: Request, exc: exceptions.SessionInfoDoesNotExistException):
-    # TODO: Continue
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
             "error": constants.ErrorCode.INVALID_REQUEST,
-            "error_description": exc.message if exc else "client does not exist"
+            "error_description": exc.message if exc.message else "client does not exist"
+        },
+    )
+
+
+@app.exception_handler(exceptions.ClientIsNotAuthenticatedException)
+def handle_unauthenticated_client_exception(_: Request, exc: exceptions.ClientIsNotAuthenticatedException):
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "error": constants.ErrorCode.INVALID_CLIENT,
+            "error_description": exc.message if exc.message else "invalid credentials"
+        },
+    )
+
+
+@app.exception_handler(exceptions.RequestedScopesAreNotAllowedException)
+def handle_scopes_not_allowed_exception(_: Request, exc: exceptions.RequestedScopesAreNotAllowedException):
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "error": constants.ErrorCode.INVALID_SCOPE,
+            "error_description": exc.message if exc.message else "the scopes requested are invalid"
         },
     )

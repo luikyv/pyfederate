@@ -1,9 +1,9 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Query, Depends, Request, Response
+from fastapi import APIRouter, status, Query, Form, Depends, Request, Response
 
 from ..auth_manager import manager as auth_manager
 from ..utils.constants import GrantType
-from ..utils import constants, telemetry, schemas, tools, helpers, exceptions
+from ..utils import constants, telemetry, schemas, tools, helpers
 
 logger = telemetry.get_logger(__name__)
 
@@ -19,28 +19,28 @@ router = APIRouter(
     status_code=status.HTTP_200_OK
 )
 async def get_token(
-    client: Annotated[schemas.Client, Depends(helpers.get_client)],
-    grant_type: Annotated[GrantType, Query()],
+    client: Annotated[schemas.Client, Depends(helpers.get_client_as_form)],
+    grant_type: Annotated[GrantType, Form()],
     client_secret: Annotated[
         str | None,
-        Query(min_length=constants.CLIENT_SECRET_MIN_LENGH,
-              max_length=constants.CLIENT_SECRET_MAX_LENGH)
+        Form(min_length=constants.CLIENT_SECRET_MIN_LENGH,
+             max_length=constants.CLIENT_SECRET_MAX_LENGH)
     ] = None,
     code: Annotated[
         str | None,
-        Query(description="Authorization code")
+        Form(description="Authorization code")
     ] = None,
     scope: Annotated[
         str | None,
-        Query(description="Space separeted list of scopes")
+        Form(description="Space separeted list of scopes")
     ] = None,
     redirect_uri: Annotated[
         str | None,
-        Query(description="URL informed during /authorize")
+        Form(description="URL informed during /authorize")
     ] = None,
     code_verifier: Annotated[
         str | None,
-        Query(min_length=43, max_length=128, description="PCKE extension")
+        Form(min_length=43, max_length=128, description="PCKE extension")
     ] = None,
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> schemas.TokenResponse:
@@ -71,7 +71,7 @@ async def get_token(
 )
 async def authorize(
     request: Request,
-    client: Annotated[schemas.Client, Depends(helpers.get_client)],
+    client: Annotated[schemas.Client, Depends(helpers.get_client_as_query)],
     response_type: Annotated[constants.ResponseType, Query()],
     redirect_uri: Annotated[
         str,
@@ -109,7 +109,6 @@ async def authorize(
     logger.info(f"Policy retrieved")
 
     session = schemas.AuthnSession(
-        id=tools.generate_session_id(),
         tracking_id=telemetry.tracking_id.get(),
         correlation_id=telemetry.correlation_id.get(),
         callback_id=tools.generate_callback_id(),

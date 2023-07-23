@@ -13,7 +13,7 @@ logger = telemetry.get_logger(__name__)
 class TokenModelManager(ABC):
 
     @abstractmethod
-    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.BaseTokenModel:
+    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
         """
         Throws:
             exceptions.TokenModelAlreadyExists
@@ -21,7 +21,7 @@ class TokenModelManager(ABC):
         pass
 
     @abstractmethod
-    async def get_token_model(self, token_model_id: str) -> schemas.BaseTokenModel:
+    async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
         """
         Throws:
             exceptions.TokenModelDoesNotExist
@@ -29,7 +29,7 @@ class TokenModelManager(ABC):
         pass
 
     @abstractmethod
-    async def get_token_models(self) -> typing.List[schemas.BaseTokenModel]:
+    async def get_token_models(self) -> typing.List[schemas.TokenModel]:
         pass
 
     @abstractmethod
@@ -98,7 +98,7 @@ class OLTPTokenModelManager(TokenModelManager):
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
-    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.BaseTokenModel:
+    async def create_token_model(self, token_model: schemas.TokenModelUpsert) -> schemas.TokenModel:
 
         token_model_db = models.TokenModel.to_db_model(token_model=token_model)
         with Session(self.engine) as db:
@@ -106,7 +106,7 @@ class OLTPTokenModelManager(TokenModelManager):
             db.commit()
             return token_model_db.to_schema()
 
-    async def get_token_model(self, token_model_id: str) -> schemas.BaseTokenModel:
+    async def get_token_model(self, token_model_id: str) -> schemas.TokenModel:
 
         with Session(self.engine) as db:
             token_model_db = db.query(models.TokenModel).filter(
@@ -117,7 +117,7 @@ class OLTPTokenModelManager(TokenModelManager):
 
         return token_model_db.to_schema()
 
-    async def get_token_models(self) -> typing.List[schemas.BaseTokenModel]:
+    async def get_token_models(self) -> typing.List[schemas.TokenModel]:
 
         with Session(self.engine) as db:
             token_models_db: typing.List[models.TokenModel] = db.query(

@@ -44,7 +44,7 @@ class TokenInfo():
 class BearerToken:
     id: str
     info: TokenInfo
-    token: str
+    access_token: str
 
 
 class BaseTokenModel(BaseModel):
@@ -96,7 +96,7 @@ class JWTTokenModel(TokenModel):
         return BearerToken(
             id=token_info.id,
             info=token_info,
-            token=jwt.encode(
+            access_token=jwt.encode(
                 payload=token_info.to_jwt_payload(),
                 key=self.key,
                 algorithm=self.signing_algorithm.value
@@ -250,7 +250,7 @@ class ClientIn(ClientBase):
 
     @model_validator(mode="after")
     def only_authz_code_has_response_types(self) -> "ClientIn":
-        """Response type are only allowed for the authorization code grant type"""
+        """Response types are only allowed for the authorization code grant type"""
         if (constants.GrantType.AUTHORIZATION_CODE not in self.grant_types
            and self.response_types):
             raise ValueError(
@@ -284,7 +284,7 @@ class ClientOut(ClientBase):
 
 ######################################## OAuth ########################################
 
-#################### /token ####################
+#################### Token Endpoint ####################
 
 
 class GrantContext(BaseModel):
@@ -405,7 +405,7 @@ class TokenResponse(BaseModel):
     refresh_token: str | None = None
     scope: str | None = None
 
-#################### /authorize ####################
+#################### Authorization Endpoint ####################
 
 
 class AuthorizeContext(BaseModel):
@@ -439,10 +439,9 @@ class AuthorizeContext(BaseModel):
 
 @dataclass
 class AuthnSession():
-    id: str
+    callback_id: str
     tracking_id: str
     correlation_id: str
-    callback_id: str | None
     client_id: str
     redirect_uri: str
     requested_scopes: List[str]
@@ -454,6 +453,16 @@ class AuthnSession():
     authz_code_creation_timestamp: int | None
     code_challenge: str | None
     params: Dict[str, Any] = field(default_factory=dict)
+    id: str = field(default_factory=tools.generate_session_id)
+
+
+@dataclass
+class TokenSession():
+    token_id: str
+    refresh_token: str | None
+    client_id: str
+    token_model_id: str
+    token_info: TokenInfo
 
 ######################################## Auth Policy ########################################
 
@@ -493,7 +502,7 @@ class AuthnStepFailureResult(AuthnStepResult):
                 "error": ErrorCode.ACCESS_DENIED.value,
                 "error_description": self.error_description if self.error_description else "access denied",
             }),
-            status_code=status.HTTP_303_SEE_OTHER
+            status_code=status.HTTP_302_FOUND
         )
 
 
@@ -513,7 +522,7 @@ class AuthnStepSuccessResult(AuthnStepResult):
                 "code": session.authz_code,
                 "state": session.state,
             }),
-            status_code=status.HTTP_303_SEE_OTHER
+            status_code=status.HTTP_302_FOUND
         )
 
 

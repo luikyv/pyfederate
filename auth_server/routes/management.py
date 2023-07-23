@@ -17,7 +17,7 @@ router = APIRouter(
 )
 async def create_token_model(token_model_input: schemas.TokenModelIn) -> schemas.TokenModelOut:
 
-    token_model: schemas.BaseTokenModel = await auth_manager.token_model_manager.create_token_model(token_model=token_model_input.to_upsert())
+    token_model: schemas.TokenModel = await auth_manager.token_model_manager.create_token_model(token_model=token_model_input.to_upsert())
     return token_model.to_output()
 
 
@@ -26,7 +26,7 @@ async def create_token_model(token_model_input: schemas.TokenModelIn) -> schemas
     status_code=status.HTTP_200_OK,
 )
 async def get_token_model(token_model_id: str) -> schemas.TokenModelOut:
-    token_model: schemas.BaseTokenModel = await auth_manager.token_model_manager.get_token_model(token_model_id=token_model_id)
+    token_model: schemas.TokenModel = await auth_manager.token_model_manager.get_token_model(token_model_id=token_model_id)
     return token_model.to_output()
 
 
@@ -35,7 +35,7 @@ async def get_token_model(token_model_id: str) -> schemas.TokenModelOut:
     status_code=status.HTTP_200_OK,
 )
 async def get_token_models() -> typing.List[schemas.TokenModelOut]:
-    token_models: typing.List[schemas.BaseTokenModel] = await auth_manager.token_model_manager.get_token_models()
+    token_models: typing.List[schemas.TokenModel] = await auth_manager.token_model_manager.get_token_models()
     return [token_model.to_output() for token_model in token_models]
 
 
@@ -102,15 +102,7 @@ async def create_client(client_in: schemas.ClientIn) -> schemas.ClientOut:
     response_model_exclude_none=True,
 )
 async def get_client(client_id: str):
-    try:
-        client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
-    except exceptions.ClientDoesNotExistException:
-        raise exceptions.HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            error=constants.ErrorCode.ACCESS_DENIED,
-            error_description="invalid credentials"
-        )
-
+    client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
     return client.to_output()
 
 

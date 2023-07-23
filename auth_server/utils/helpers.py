@@ -1,5 +1,5 @@
 from typing import Annotated, Awaitable, Callable, Dict
-from fastapi import status, Query, Path, Request, Response
+from fastapi import Form, Query, Path, Request, Response
 import inspect
 
 from ..utils import constants, telemetry, schemas, tools, exceptions
@@ -11,11 +11,20 @@ logger = telemetry.get_logger(__name__)
 ######################################## Dependency Functions ########################################
 
 
-async def get_client(
+async def get_client_as_form(
         client_id: Annotated[
             str,
-            Query(min_length=constants.CLIENT_ID_MIN_LENGH,
-                  max_length=constants.CLIENT_ID_MAX_LENGH)
+            Form()
+        ]
+) -> schemas.Client:
+
+    return await auth_manager.client_manager.get_client(client_id=client_id)
+
+
+async def get_client_as_query(
+        client_id: Annotated[
+            str,
+            Query()
         ]
 ) -> schemas.Client:
 
@@ -43,6 +52,8 @@ async def setup_session_by_callback_id(
     """
 
     session: schemas.AuthnSession = await auth_manager.session_manager.get_session_by_callback_id(callback_id=callback_id)
+    if session.authz_code:
+        raise exceptions.AuthzCodeAlreadyIssuedException()
 
     setup_telemetry(session=session)
     return session
@@ -79,7 +90,7 @@ async def client_credentials_token_handler(
         additional_claims={}
     )
     return schemas.TokenResponse(
-        access_token=token.token,
+        access_token=token.access_token,
         expires_in=token_model.expires_in
     )
 
@@ -135,7 +146,7 @@ async def authorization_code_token_handler(
     # Delete the session to make sure the authz code can no longer be used
     await auth_manager.session_manager.delete_session(session_id=session.id)
     return schemas.TokenResponse(
-        access_token=token.token,
+        access_token=token.access_token,
         expires_in=authz_code_context.token_model.expires_in
     )
 
