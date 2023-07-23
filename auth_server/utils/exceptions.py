@@ -50,6 +50,14 @@ class ClientDoesNotExistException(CustomException):
     pass
 
 
+class TokenSessionAlreadyExistsException(CustomException):
+    pass
+
+
+class TokenSessionDoesNotExistException(CustomException):
+    pass
+
+
 class SessionInfoAlreadyExistsException(CustomException):
     pass
 
@@ -99,6 +107,10 @@ class ParameterNotAllowedException(CustomException):
 
 
 class InvalidAuthorizationCodeException(CustomException):
+    pass
+
+
+class InvalidRefreshTokenException(CustomException):
     pass
 
 

@@ -54,6 +54,10 @@ def generate_session_id() -> str:
     return generate_fixed_size_random_string(constants.SESSION_ID_LENGTH)
 
 
+def generate_refresh_token() -> str:
+    return generate_fixed_size_random_string(constants.REFRESH_TOKEN_LENGTH)
+
+
 def hash_secret(secret: str) -> str:
     return bcrypt.hashpw(
         secret.encode(constants.SECRET_ENCODING),

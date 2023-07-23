@@ -51,17 +51,15 @@ class BaseTokenModel(BaseModel):
     id: str
     issuer: str
     expires_in: int
+    is_refreshable: bool = False
 
 
 class TokenModel(BaseTokenModel, ABC):
     @abstractmethod
     def generate_token(
         self,
-        client_id: str,
-        subject: str,
-        scopes: List[str],
-        additional_claims: Dict[str, str]
-    ) -> BearerToken:
+        token_info: TokenInfo
+    ) -> str:
         pass
 
     @abstractmethod
@@ -76,31 +74,13 @@ class JWTTokenModel(TokenModel):
 
     def generate_token(
         self,
-        client_id: str,
-        subject: str,
-        scopes: List[str],
-        additional_claims: Dict[str, str]
-    ) -> BearerToken:
+        token_info: TokenInfo
+    ) -> str:
 
-        timestamp_now = tools.get_timestamp_now()
-        token_info = TokenInfo(
-            subject=subject,
-            issuer=self.issuer,
-            issued_at=timestamp_now,
-            expiration=timestamp_now + self.expires_in,
-            client_id=client_id,
-            scopes=scopes,
-            additional_info=additional_claims
-        )
-
-        return BearerToken(
-            id=token_info.id,
-            info=token_info,
-            access_token=jwt.encode(
-                payload=token_info.to_jwt_payload(),
-                key=self.key,
-                algorithm=self.signing_algorithm.value
-            )
+        return jwt.encode(
+            payload=token_info.to_jwt_payload(),
+            key=self.key,
+            algorithm=self.signing_algorithm.value
         )
 
     def to_output(self) -> "TokenModelOut":
@@ -294,6 +274,7 @@ class GrantContext(BaseModel):
     client_secret: str | None
     requested_scopes: List[str]
     redirect_uri: str | None
+    refresh_token: str | None
     authz_code: str | None
     code_verifier: str | None
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE
@@ -338,7 +319,7 @@ class ClientCredentialsGrantContext(CommonValidationsGrantContext):
     @model_validator(mode="after")
     def some_fields_must_be_none(self) -> "ClientCredentialsGrantContext":
         """Some field in the grant context don't make sense for client credentials"""
-        if (self.redirect_uri or self.authz_code or self.code_verifier):
+        if (self.redirect_uri or self.authz_code or self.code_verifier or self.refresh_token):
             raise exceptions.ParameterNotAllowedException()
         return self
 
@@ -396,6 +377,16 @@ class AuthorizationCodeGrantContext(CommonValidationsGrantContext):
             ):
                 raise exceptions.InvalidPCKEException()
         return self
+
+
+class RefreshTokenGrantContext(CommonValidationsGrantContext):
+    token_session: "TokenSession"
+
+    @field_validator("grant_type")
+    def grant_type_is_refresh_token(cls, grant_type: GrantType) -> GrantType:
+        if (grant_type is not GrantType.REFRESH_TOKEN):
+            raise exceptions.InvalidGrantTypeException()
+        return grant_type
 
 
 class TokenResponse(BaseModel):
@@ -472,11 +463,12 @@ AUTHN_STEPS: Dict[str, "AuthnStep"] = {}
 
 
 @dataclass
-class AuthnStepResult():
+class AuthnStepResult(ABC):
     status: constants.AuthnStatus
 
+    @abstractmethod
     def get_response(self, session: AuthnSession) -> Response:
-        raise NotImplementedError()
+        pass
 
 
 @dataclass

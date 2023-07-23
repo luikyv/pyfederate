@@ -38,6 +38,11 @@ async def get_token(
         str | None,
         Form(description="URL informed during /authorize")
     ] = None,
+    refresh_token: Annotated[
+        str | None,
+        Form(min_length=constants.REFRESH_TOKEN_LENGTH,
+             max_length=constants.REFRESH_TOKEN_LENGTH)
+    ] = None,
     code_verifier: Annotated[
         str | None,
         Form(min_length=43, max_length=128, description="PCKE extension")
@@ -55,6 +60,7 @@ async def get_token(
         client_secret=client_secret,
         requested_scopes=requested_scopes,
         redirect_uri=redirect_uri,
+        refresh_token=refresh_token,
         authz_code=code,
         code_verifier=code_verifier,
         correlation_id=correlation_id
@@ -106,7 +112,7 @@ async def authorize(
     authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(
         client=client, request=request
     )
-    logger.info(f"Policy retrieved")
+    logger.info(f"Policy with ID: {authn_policy.id} retrieved for execution")
 
     session = schemas.AuthnSession(
         tracking_id=telemetry.tracking_id.get(),

@@ -69,29 +69,25 @@ async def client_credentials_token_handler(
 
     # When creating the ClientCredentialsContext, the validations run
     client_credentials_context = schemas.ClientCredentialsGrantContext(
-        grant_type=GrantType.CLIENT_CREDENTIALS,
-        client=grant_context.client,
-        token_model=grant_context.token_model,
-        client_secret=grant_context.client_secret,
-        requested_scopes=grant_context.requested_scopes,
-        redirect_uri=grant_context.redirect_uri,
-        authz_code=grant_context.authz_code,
-        code_verifier=grant_context.code_verifier,
-        correlation_id=grant_context.correlation_id
+        **dict(grant_context),
     )
 
-    client: schemas.Client = client_credentials_context.client
-    token_model: schemas.TokenModel = client_credentials_context.token_model
-    token: schemas.BearerToken = token_model.generate_token(
-        client_id=client.id,
-        subject=client.id,
-        # If the client didn't inform any scopes, send all the available ones
-        scopes=grant_context.requested_scopes if grant_context.requested_scopes else client.scopes,
-        additional_claims={}
+    timestamp_now = tools.get_timestamp_now()
+    token_info = schemas.TokenInfo(
+        subject=client_credentials_context.client.id,
+        issuer=client_credentials_context.token_model.id,
+        issued_at=timestamp_now,
+        expiration=timestamp_now + client_credentials_context.token_model.expires_in,
+        client_id=client_credentials_context.client.id,
+        scopes=client_credentials_context.requested_scopes,
+        additional_info={}
+    )
+    token: str = client_credentials_context.token_model.generate_token(
+        token_info=token_info
     )
     return schemas.TokenResponse(
-        access_token=token.access_token,
-        expires_in=token_model.expires_in
+        access_token=token,
+        expires_in=client_credentials_context.token_model.expires_in
     )
 
 #################### Authorization Code ####################
@@ -110,6 +106,21 @@ async def setup_session_by_authz_code(
     return session
 
 
+async def create_token_session(authz_code_context: schemas.AuthorizationCodeGrantContext, token_info: schemas.TokenInfo) -> None:
+
+    await auth_manager.session_manager.create_token_session(
+        session=schemas.TokenSession(
+            token_id=token_info.id,
+            refresh_token=tools.generate_refresh_token() if (
+                authz_code_context.client.authn_method != constants.ClientAuthnMethod.NONE and authz_code_context.token_model.is_refreshable
+            ) else None,
+            client_id=authz_code_context.client.id,
+            token_model_id=authz_code_context.token_model.id,
+            token_info=token_info
+        )
+    )
+
+
 async def authorization_code_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
@@ -119,35 +130,69 @@ async def authorization_code_token_handler(
     session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
     # When creating the AuthorizationCodeGrantContext, the validations run
     authz_code_context = schemas.AuthorizationCodeGrantContext(
-        grant_type=GrantType.AUTHORIZATION_CODE,
-        client=grant_context.client,
-        token_model=grant_context.token_model,
-        client_secret=grant_context.client_secret,
-        requested_scopes=grant_context.requested_scopes,
-        redirect_uri=grant_context.redirect_uri,
-        authz_code=grant_context.authz_code,
-        code_verifier=grant_context.code_verifier,
-        correlation_id=grant_context.correlation_id,
+        **dict(grant_context),
         session=session
     )
+    # Delete the session from storage to make sure the authz code can no longer be used
+    await auth_manager.session_manager.delete_session(session_id=session.id)
 
-    client: schemas.Client = authz_code_context.client
-    token_model: schemas.TokenModel = authz_code_context.token_model
-    # Generate token
+    # Generate the token
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
-    token: schemas.BearerToken = token_model.generate_token(
-        client_id=client.id,
+    timestamp_now = tools.get_timestamp_now()
+    token_info = schemas.TokenInfo(
         # The user_id was already validated by the validators in AuthorizationCodeContext
         subject=session.user_id,  # type: ignore
+        issuer=authz_code_context.token_model.id,
+        issued_at=timestamp_now,
+        expiration=timestamp_now + authz_code_context.token_model.expires_in,
+        client_id=authz_code_context.client.id,
         scopes=session.requested_scopes,
-        additional_claims=authn_policy.get_extra_token_claims(
+        additional_info=authn_policy.get_extra_token_claims(
             session) if authn_policy.get_extra_token_claims else {}
     )
-    # Delete the session to make sure the authz code can no longer be used
-    await auth_manager.session_manager.delete_session(session_id=session.id)
+    await create_token_session(authz_code_context=authz_code_context, token_info=token_info)
     return schemas.TokenResponse(
-        access_token=token.access_token,
+        access_token=authz_code_context.token_model.generate_token(
+            token_info=token_info
+        ),
         expires_in=authz_code_context.token_model.expires_in
+    )
+
+#################### Refresh Token ####################
+
+
+async def refresh_token_handler(
+    grant_context: schemas.GrantContext
+) -> schemas.TokenResponse:
+    if grant_context.refresh_token is None:
+        raise exceptions.InvalidRefreshTokenException()
+    token_session: schemas.TokenSession = await auth_manager.session_manager.get_token_session_by_refresh_token(
+        refresh_token=grant_context.refresh_token
+    )
+    # When creating the RefreshTokenGrantContext, the validations run
+    refresh_token_context = schemas.RefreshTokenGrantContext(
+        **dict(grant_context),
+        token_session=token_session
+    )
+
+    token_model: schemas.TokenModel = await auth_manager.token_model_manager.get_token_model(token_model_id=token_session.token_model_id)
+    timestamp_now = tools.get_timestamp_now()
+    token_info = schemas.TokenInfo(
+        id=token_session.token_id,
+        subject=token_session.token_info.subject,
+        issuer=token_session.token_info.issuer,
+        issued_at=timestamp_now,
+        expiration=timestamp_now+token_model.expires_in,
+        client_id=token_session.client_id,
+        scopes=token_session.token_info.scopes,
+        additional_info=token_session.token_info.additional_info
+    )
+    # TODO: Update the token session
+    return schemas.TokenResponse(
+        access_token=token_model.generate_token(
+            token_info=token_info,
+        ),
+        expires_in=token_model.expires_in
     )
 
 #################### Handler Object ####################
@@ -159,7 +204,8 @@ grant_handlers: Dict[
     ]
 ] = {
     GrantType.CLIENT_CREDENTIALS: client_credentials_token_handler,
-    GrantType.AUTHORIZATION_CODE: authorization_code_token_handler
+    GrantType.AUTHORIZATION_CODE: authorization_code_token_handler,
+    GrantType.REFRESH_TOKEN: refresh_token_handler
 }
 
 ######################################## Authn Status Handlers ########################################
