@@ -47,7 +47,7 @@ def handle_token_model_already_exists_exception(_: Request, exc: exceptions.Toke
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.value,
             "error_description": exc.message if exc.message else "token model id already exists"
         },
     )
@@ -58,7 +58,7 @@ def handle_token_model_does_not_exist_exception(_: Request, exc: exceptions.Toke
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.value,
             "error_description": exc.message if exc.message else "token model id does not exist"
         },
     )
@@ -69,7 +69,7 @@ def handle_scope_already_exists_exception(_: Request, exc: exceptions.ScopeAlrea
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.value,
             "error_description": exc.message if exc.message else "scope already exists"
         },
     )
@@ -80,7 +80,7 @@ def handle_scope_does_not_exist_exception(_: Request, exc: exceptions.ScopeDoesN
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.value,
             "error_description": exc.message if exc.message else "scope does not exist"
         },
     )
@@ -91,7 +91,7 @@ def handle_client_already_exists_exception(_: Request, exc: exceptions.ClientAlr
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.value,
             "error_description": exc.message if exc.message else "client already exists"
         },
     )
@@ -102,7 +102,7 @@ def handle_client_does_not_exist_exception(_: Request, exc: exceptions.ClientDoe
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.value,
             "error_description": exc.message if exc.message else "client does not exist"
         },
     )
@@ -113,7 +113,7 @@ def handle_authn_session_does_not_exist_exception(_: Request, exc: exceptions.Se
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.value,
             "error_description": exc.message if exc.message else "client does not exist"
         },
     )

@@ -63,6 +63,7 @@ class MockedTokenModelManager(TokenModelManager):
                 id=token_model.id,
                 issuer=token_model.issuer,
                 expires_in=token_model.expires_in,
+                is_refreshable=token_model.is_refreshable,
                 key_id=token_model.key_id,  # type: ignore
                 key=constants.PRIVATE_JWKS[
                     token_model.key_id].key,  # type: ignore

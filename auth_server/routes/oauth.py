@@ -49,7 +49,6 @@ async def get_token(
     ] = None,
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> schemas.TokenResponse:
-    logger.info(f"TOKEN MODEL ID: {client.token_model.id}")
 
     requested_scopes: List[str] = scope.split(" ") if scope is not None else []
 

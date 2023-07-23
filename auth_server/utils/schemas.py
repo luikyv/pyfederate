@@ -51,7 +51,7 @@ class BaseTokenModel(BaseModel):
     id: str
     issuer: str
     expires_in: int
-    is_refreshable: bool = False
+    is_refreshable: bool
 
 
 class TokenModel(BaseTokenModel, ABC):
@@ -90,6 +90,7 @@ class JWTTokenModel(TokenModel):
             issuer=self.issuer,
             expires_in=self.expires_in,
             token_type=constants.TokenType.JWT,
+            is_refreshable=self.is_refreshable,
             key_id=self.key_id,
             signing_algorithm=self.signing_algorithm
         )
@@ -117,6 +118,7 @@ class TokenModelIn(BaseTokenModel):
             id=self.id,
             issuer=self.issuer,
             expires_in=self.expires_in,
+            is_refreshable=self.is_refreshable,
             token_type=self.token_type,
             key_id=self.key_id,
         )
@@ -245,6 +247,16 @@ class ClientIn(ClientBase):
                 and self.authn_method == ClientAuthnMethod.NONE):
             raise ValueError(
                 "An authentication method must be provided for the client credentials grant"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def refresh_token_authn_method(self) -> "ClientIn":
+        """Clients allowed to perform refresh token must have an authn method"""
+        if (constants.GrantType.REFRESH_TOKEN in self.grant_types
+                and self.authn_method == ClientAuthnMethod.NONE):
+            raise ValueError(
+                "An authentication method must be provided for the refresh token grant"
             )
         return self
 

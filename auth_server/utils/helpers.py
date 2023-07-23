@@ -106,19 +106,23 @@ async def setup_session_by_authz_code(
     return session
 
 
-async def create_token_session(authz_code_context: schemas.AuthorizationCodeGrantContext, token_info: schemas.TokenInfo) -> None:
+async def create_token_session(authz_code_context: schemas.AuthorizationCodeGrantContext, token_info: schemas.TokenInfo) -> schemas.TokenSession:
 
-    await auth_manager.session_manager.create_token_session(
-        session=schemas.TokenSession(
-            token_id=token_info.id,
-            refresh_token=tools.generate_refresh_token() if (
-                authz_code_context.client.authn_method != constants.ClientAuthnMethod.NONE and authz_code_context.token_model.is_refreshable
-            ) else None,
-            client_id=authz_code_context.client.id,
-            token_model_id=authz_code_context.token_model.id,
-            token_info=token_info
-        )
+    token_session = schemas.TokenSession(
+        token_id=token_info.id,
+        refresh_token=tools.generate_refresh_token() if (
+            authz_code_context.client.is_grant_type_allowed(
+                grant_type=constants.GrantType.REFRESH_TOKEN
+            ) and authz_code_context.token_model.is_refreshable
+        ) else None,
+        client_id=authz_code_context.client.id,
+        token_model_id=authz_code_context.token_model.id,
+        token_info=token_info
     )
+    await auth_manager.session_manager.create_token_session(
+        session=token_session
+    )
+    return token_session
 
 
 async def authorization_code_token_handler(
@@ -142,7 +146,7 @@ async def authorization_code_token_handler(
     token_info = schemas.TokenInfo(
         # The user_id was already validated by the validators in AuthorizationCodeContext
         subject=session.user_id,  # type: ignore
-        issuer=authz_code_context.token_model.id,
+        issuer=authz_code_context.token_model.issuer,
         issued_at=timestamp_now,
         expiration=timestamp_now + authz_code_context.token_model.expires_in,
         client_id=authz_code_context.client.id,
@@ -150,15 +154,27 @@ async def authorization_code_token_handler(
         additional_info=authn_policy.get_extra_token_claims(
             session) if authn_policy.get_extra_token_claims else {}
     )
-    await create_token_session(authz_code_context=authz_code_context, token_info=token_info)
+    token_session: schemas.TokenSession = await create_token_session(authz_code_context=authz_code_context, token_info=token_info)
     return schemas.TokenResponse(
         access_token=authz_code_context.token_model.generate_token(
             token_info=token_info
         ),
+        refresh_token=token_session.refresh_token,
         expires_in=authz_code_context.token_model.expires_in
     )
 
 #################### Refresh Token ####################
+
+
+async def update_token_session(token_session: schemas.TokenSession, token_model: schemas.TokenModel) -> None:
+    """Update the token session properties"""
+
+    timestamp_now = tools.get_timestamp_now()
+    # Update the token session
+    token_session.token_info.expiration = timestamp_now
+    token_session.token_info.expiration = timestamp_now + token_model.expires_in
+    token_session.refresh_token = tools.generate_refresh_token()
+    await auth_manager.session_manager.update_token_session(session=token_session)
 
 
 async def refresh_token_handler(
@@ -176,22 +192,12 @@ async def refresh_token_handler(
     )
 
     token_model: schemas.TokenModel = await auth_manager.token_model_manager.get_token_model(token_model_id=token_session.token_model_id)
-    timestamp_now = tools.get_timestamp_now()
-    token_info = schemas.TokenInfo(
-        id=token_session.token_id,
-        subject=token_session.token_info.subject,
-        issuer=token_session.token_info.issuer,
-        issued_at=timestamp_now,
-        expiration=timestamp_now+token_model.expires_in,
-        client_id=token_session.client_id,
-        scopes=token_session.token_info.scopes,
-        additional_info=token_session.token_info.additional_info
-    )
-    # TODO: Update the token session
+    await update_token_session(token_session=token_session, token_model=token_model)
     return schemas.TokenResponse(
         access_token=token_model.generate_token(
-            token_info=token_info,
+            token_info=token_session.token_info,
         ),
+        refresh_token=token_session.refresh_token,
         expires_in=token_model.expires_in
     )
 
