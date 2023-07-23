@@ -67,7 +67,7 @@ async def client_credentials_token_handler(
     grant_context: schemas.GrantContext
 ) -> schemas.TokenResponse:
 
-    # When creating the ClientCredentialsContext, the validations run
+    # When creating a ClientCredentialsContext, the validations run
     client_credentials_context = schemas.ClientCredentialsGrantContext(
         **dict(grant_context),
     )
@@ -82,11 +82,10 @@ async def client_credentials_token_handler(
         scopes=client_credentials_context.requested_scopes,
         additional_info={}
     )
-    token: str = client_credentials_context.token_model.generate_token(
-        token_info=token_info
-    )
     return schemas.TokenResponse(
-        access_token=token,
+        access_token=client_credentials_context.token_model.generate_token(
+            token_info=token_info
+        ),
         expires_in=client_credentials_context.token_model.expires_in
     )
 
@@ -132,7 +131,7 @@ async def authorization_code_token_handler(
     if (grant_context.authz_code is None):
         raise exceptions.InvalidAuthorizationCodeException()
     session: schemas.AuthnSession = await setup_session_by_authz_code(authz_code=grant_context.authz_code)
-    # When creating the AuthorizationCodeGrantContext, the validations run
+    # When creating an AuthorizationCodeGrantContext, the validations run
     authz_code_context = schemas.AuthorizationCodeGrantContext(
         **dict(grant_context),
         session=session

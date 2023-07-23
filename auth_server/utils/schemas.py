@@ -27,7 +27,6 @@ class TokenInfo():
 
     def to_jwt_payload(self) -> Dict[str, Any]:
         payload = {
-            **self.additional_info,
             TokenClaim.JWT_ID.value: self.id,
             TokenClaim.SUBJECT.value: self.subject,
             TokenClaim.ISSUER.value: self.issuer,
@@ -37,7 +36,8 @@ class TokenInfo():
             TokenClaim.SCOPE.value: " ".join(self.scopes)
         }
 
-        return payload
+        # Merge the two dicts and allow the additional_info to override values in the payload
+        return payload | self.additional_info
 
 
 @dataclass
