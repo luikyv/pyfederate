@@ -40,13 +40,6 @@ class TokenInfo():
         return payload | self.additional_info
 
 
-@dataclass
-class BearerToken:
-    id: str
-    info: TokenInfo
-    access_token: str
-
-
 class BaseTokenModel(BaseModel):
     id: str
     issuer: str
