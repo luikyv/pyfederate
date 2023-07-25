@@ -15,6 +15,7 @@ load_dotenv()
 
 class HTTPHeaders(Enum):
     CACHE_CONTROL = "Cache-Control"
+    PRAGMA = "Pragma"
     LOCATION = "location"
     X_CORRELATION_ID = "X-Correlation-ID"
 
@@ -28,7 +29,6 @@ class GrantType(Enum):
 class ResponseType(Enum):
     CODE = "code"
     ID_TOKEN = "id_token"
-    CODE_AND_ID_TOKEN = "code id_token"
 
 
 class TokenType(Enum):

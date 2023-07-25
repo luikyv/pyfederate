@@ -207,8 +207,8 @@ class Client(ClientBase):
     def owns_redirect_uri(self, redirect_uri: str) -> bool:
         return redirect_uri in self.redirect_uris
 
-    def is_response_type_allowed(self, response_type: constants.ResponseType) -> bool:
-        return response_type in self.response_types
+    def are_response_types_allowed(self, response_types: List[constants.ResponseType]) -> bool:
+        return any([rt not in self.response_types for rt in response_types])
 
     def is_grant_type_allowed(self, grant_type: constants.GrantType) -> bool:
         return grant_type in self.grant_types
@@ -407,7 +407,7 @@ class TokenResponse(BaseModel):
 class AuthorizeContext(BaseModel):
     client: Client
     requested_scopes: List[str]
-    response_type: constants.ResponseType
+    response_types: List[constants.ResponseType]
     redirect_uri: str
     code_challenge: str | None
     code_challenge_method: constants.CodeChallengeMethod
@@ -420,7 +420,7 @@ class AuthorizeContext(BaseModel):
 
     @model_validator(mode="after")
     def validate_response_type(self: "AuthorizeContext") -> "AuthorizeContext":
-        if not self.client.is_response_type_allowed(response_type=self.response_type):
+        if not self.client.are_response_types_allowed(response_types=self.response_types):
             raise exceptions.ResponseTypeIsNotAllowedException()
         return self
 

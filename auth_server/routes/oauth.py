@@ -77,7 +77,7 @@ async def get_token(
 async def authorize(
     request: Request,
     client: Annotated[schemas.Client, Depends(helpers.get_client_as_query)],
-    response_type: Annotated[constants.ResponseType, Query()],
+    response_types: Annotated[List[constants.ResponseType], Depends(helpers.get_response_types)],
     redirect_uri: Annotated[
         str,
         Query(description="URL to where the user will be redirected to once he is authenticated")
@@ -103,7 +103,7 @@ async def authorize(
     schemas.AuthorizeContext(
         client=client,
         requested_scopes=scope.split(" "),
-        response_type=response_type,
+        response_types=response_types,
         redirect_uri=redirect_uri,
         code_challenge=code_challenge,
         code_challenge_method=code_challenge_method

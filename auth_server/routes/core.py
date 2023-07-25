@@ -33,9 +33,10 @@ async def set_telemetry_ids(request: Request, call_next) -> Response:
     if (x_correlation_id):
         telemetry.correlation_id.set(x_correlation_id)
 
-    # Ensure clients don't cache the response
     response: Response = await call_next(request)
-    response.headers["Cache-Control"] = "no-cache, no-store"
+    # Ensure clients don't cache the response
+    response.headers[constants.HTTPHeaders.CACHE_CONTROL.value] = "no-cache, no-store"
+    response.headers[constants.HTTPHeaders.PRAGMA.value] = "no-cache"
 
     return response
 

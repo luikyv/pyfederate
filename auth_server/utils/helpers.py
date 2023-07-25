@@ -1,4 +1,4 @@
-from typing import Annotated, Awaitable, Callable, Dict
+from typing import Annotated, Awaitable, Callable, Dict, List
 from fastapi import Form, Query, Path, Request, Response
 import inspect
 
@@ -57,6 +57,15 @@ async def setup_session_by_callback_id(
 
     setup_telemetry(session=session)
     return session
+
+
+def get_response_types(
+    response_type: Annotated[
+        str,
+        Query()
+    ]
+) -> List[constants.ResponseType]:
+    return [constants.ResponseType(rt) for rt in response_type.split(" ")]
 
 ######################################## Grant Handlers ########################################
 
