@@ -87,10 +87,11 @@ def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
     return quote(str(request_url_builder.url), safe=":/%#?=@[]!$&'()*+,;")
 
 
-def is_pcke_valid(code_verifier: str, code_challenge: str) -> bool:
-    return base64.urlsafe_b64encode(
+def is_pkce_valid(code_verifier: str, code_challenge: str) -> bool:
+    hashed_code_verifier = base64.urlsafe_b64encode(
         sha256(code_verifier.encode(constants.SECRET_ENCODING)).digest()
-    ).decode(constants.SECRET_ENCODING) == code_challenge
+    ).decode(constants.SECRET_ENCODING).replace("=", "")  # Remove padding '='
+    return hashed_code_verifier == code_challenge
 
 
 def to_base64_string(extra_params: Dict[str, str]) -> str:

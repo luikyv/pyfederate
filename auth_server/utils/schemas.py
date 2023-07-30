@@ -368,7 +368,7 @@ class AuthorizationCodeGrantContext(CommonValidationsGrantContext):
     def validate_pcke(self) -> "AuthorizationCodeGrantContext":
         if self.session.code_challenge:
             # Raise exception when code verifier is not provided or it doesn't match the code challenge
-            if self.code_verifier is None or not tools.is_pcke_valid(
+            if self.code_verifier is None or not tools.is_pkce_valid(
                 code_verifier=self.code_verifier,
                 code_challenge=self.session.code_challenge
             ):
