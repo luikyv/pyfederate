@@ -11,6 +11,26 @@ logger = telemetry.get_logger(__name__)
 ######################################## Dependency Functions ########################################
 
 
+async def get_authenticated_client(
+    client_id: Annotated[
+        str,
+        Form()
+    ],
+    client_secret: Annotated[
+        str | None,
+        Form(min_length=constants.CLIENT_SECRET_MIN_LENGH,
+             max_length=constants.CLIENT_SECRET_MAX_LENGH)
+    ] = None,
+) -> schemas.Client:
+
+    client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
+    if (client.authn_method == constants.ClientAuthnMethod.CLIENT_SECRET_POST):
+        if (client_secret is None or not client.is_authenticated_by_secret(client_secret=client_secret)):
+            raise exceptions.ClientIsNotAuthenticatedException()
+
+    return client
+
+
 async def get_client_as_form(
         client_id: Annotated[
             str,

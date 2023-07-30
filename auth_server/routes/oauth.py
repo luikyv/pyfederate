@@ -19,13 +19,8 @@ router = APIRouter(
     status_code=status.HTTP_200_OK
 )
 async def get_token(
-    client: Annotated[schemas.Client, Depends(helpers.get_client_as_form)],
+    client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
     grant_type: Annotated[GrantType, Form()],
-    client_secret: Annotated[
-        str | None,
-        Form(min_length=constants.CLIENT_SECRET_MIN_LENGH,
-             max_length=constants.CLIENT_SECRET_MAX_LENGH)
-    ] = None,
     code: Annotated[
         str | None,
         Form(description="Authorization code")
@@ -56,7 +51,6 @@ async def get_token(
         grant_type=grant_type,
         client=client,
         token_model=client.token_model,
-        client_secret=client_secret,
         requested_scopes=requested_scopes,
         redirect_uri=redirect_uri,
         refresh_token=refresh_token,

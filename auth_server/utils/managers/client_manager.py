@@ -51,7 +51,7 @@ class ClientManager(ABC):
 #################### Mock ####################
 
 
-class MockedClientManager(ClientManager):
+class InMemoryClientManager(ClientManager):
 
     def __init__(self, token_manager: TokenModelManager, max_number: int = 10) -> None:
         self.token_manager = token_manager

@@ -1,15 +1,15 @@
 from typing import List
-import uvicorn
-from fastapi import FastAPI, Request, Response
+from fastapi import Request
 import asyncio
 
 from .utils.managers.token_manager import TokenModelManager
 from .utils.managers.scope_manager import ScopeManager
 from .utils.managers.client_manager import ClientManager
 from .utils.managers.session_manager import SessionManager
-from .utils import constants, schemas, exceptions
+from .utils import constants, schemas, tools, exceptions
 
 
+@tools.singleton
 class AuthManager():
 
     def __init__(

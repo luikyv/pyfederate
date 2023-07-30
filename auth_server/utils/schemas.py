@@ -177,7 +177,7 @@ class ClientUpsert(ClientBase):
     @model_validator(mode="after")
     def setup_secret_authentication(self) -> "ClientUpsert":
         """Set up secret authentication"""
-        if self.authn_method == ClientAuthnMethod.SECRET:
+        if self.authn_method == ClientAuthnMethod.CLIENT_SECRET_POST:
             self.secret = tools.generate_client_secret()
 
         return self
@@ -276,7 +276,6 @@ class GrantContext(BaseModel):
     grant_type: constants.GrantType
     client: Client
     token_model: TokenModel
-    client_secret: str | None
     requested_scopes: List[str]
     redirect_uri: str | None
     refresh_token: str | None
@@ -292,13 +291,6 @@ class CommonValidationsGrantContext(GrantContext):
     def grant_type_is_allowed(self) -> "CommonValidationsGrantContext":
         if (not self.client.is_grant_type_allowed(grant_type=self.grant_type)):
             raise exceptions.GrantTypeNotAllowedException()
-        return self
-
-    @model_validator(mode="after")
-    def client_is_authenticated(self) -> "CommonValidationsGrantContext":
-        if (self.client.authn_method == constants.ClientAuthnMethod.SECRET):
-            if (self.client_secret is None or not self.client.is_authenticated_by_secret(client_secret=self.client_secret)):
-                raise exceptions.ClientIsNotAuthenticatedException()
         return self
 
 

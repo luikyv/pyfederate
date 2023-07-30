@@ -50,7 +50,7 @@ class ScopeManager(ABC):
 #################### Mock ####################
 
 
-class MockedScopeManager(ScopeManager):
+class InMemoryScopeManager(ScopeManager):
 
     def __init__(self, max_number: int = 10) -> None:
         self.scopes: typing.Dict[str, schemas.Scope] = {}

@@ -56,7 +56,7 @@ class CodeChallengeMethod(Enum):
 
 
 class ClientAuthnMethod(Enum):
-    SECRET = "secret"
+    CLIENT_SECRET_POST = "client_secret_post"
     NONE = "none"
 
 

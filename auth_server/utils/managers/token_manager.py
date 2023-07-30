@@ -47,7 +47,7 @@ class TokenModelManager(ABC):
 #################### Mock ####################
 
 
-class MockedTokenModelManager(TokenModelManager):
+class InMemoryTokenModelManager(TokenModelManager):
 
     def __init__(self, max_number: int = 10) -> None:
         self.token_models: typing.Dict[str, schemas.TokenModel] = {}

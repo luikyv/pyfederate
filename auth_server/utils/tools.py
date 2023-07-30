@@ -10,10 +10,24 @@ from hashlib import sha256
 import base64
 import json
 import time
+import functools
 
 from . import constants
 
 alphabet = string.ascii_letters + string.digits
+
+
+def singleton(cls):
+    """Make a singleton class"""
+
+    @functools.wraps(cls)
+    def singleton_wrapper(*args, **kwargs):
+        if singleton_wrapper.instance is None:
+            singleton_wrapper.instance = cls(*args, **kwargs)
+        return singleton_wrapper.instance
+
+    singleton_wrapper.instance = None  # type: ignore
+    return singleton_wrapper
 
 
 def generate_uuid() -> str:

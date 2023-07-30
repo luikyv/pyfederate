@@ -86,7 +86,7 @@ class SessionManager(ABC):
 ######################################## Implementations ########################################
 
 
-class MockedSessionManager(SessionManager):
+class InMemorySessionManager(SessionManager):
 
     def __init__(self) -> None:
         self.sessions: typing.Dict[str, schemas.AuthnSession] = {}
