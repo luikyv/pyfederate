@@ -92,7 +92,7 @@ class Client(Base):
     redirect_uris: Mapped[str] = mapped_column(String(1000))
     response_types: Mapped[str] = mapped_column(String(100))
     grant_types: Mapped[str] = mapped_column(String(200))
-    is_pcke_required: Mapped[bool] = mapped_column(Boolean())
+    is_pkce_required: Mapped[bool] = mapped_column(Boolean())
     extra_params: Mapped[str] = mapped_column(String(1000))
     scopes: Mapped[List[Scope]] = relationship(
         secondary=Table(
@@ -119,7 +119,7 @@ class Client(Base):
             grant_types=[constants.GrantType(
                 grant_type) for grant_type in self.grant_types.split(",")],
             scopes=[scope.name for scope in self.scopes],
-            is_pcke_required=self.is_pcke_required,
+            is_pkce_required=self.is_pkce_required,
             token_model=self.token_model.to_schema(),
             extra_params=tools.to_json(base64_string=self.extra_params)
         )
@@ -139,7 +139,7 @@ class Client(Base):
             redirect_uris=",".join(client.redirect_uris),
             response_types=",".join([r.value for r in client.response_types]),
             grant_types=",".join([gt.value for gt in client.grant_types]),
-            is_pcke_required=client.is_pcke_required,
+            is_pkce_required=client.is_pkce_required,
             scopes=scopes,
             token_model_id=client.token_model_id,
             extra_params=tools.to_base64_string(

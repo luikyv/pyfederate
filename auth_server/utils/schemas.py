@@ -36,8 +36,8 @@ class TokenInfo():
             TokenClaim.SCOPE.value: " ".join(self.scopes)
         }
 
-        # Merge the two dicts and allow the additional_info to override values in the payload
-        return payload | self.additional_info
+        # Merge the two dicts and do not allow the additional_info to override values in the payload
+        return self.additional_info | payload
 
 
 class BaseTokenModel(BaseModel):
@@ -166,19 +166,21 @@ class ClientBase(BaseModel):
     response_types: List[constants.ResponseType]
     grant_types: List[constants.GrantType]
     scopes: List[str]
-    is_pcke_required: bool
+    is_pkce_required: bool
     extra_params: Dict[str, str] = Field(default_factory=dict)
 
 
 class ClientUpsert(ClientBase):
     token_model_id: str
-    secret: str | None = None
+    secret: str | None = Field(default=None, init_var=False)
+    hashed_secret: str | None = Field(default=None, init_var=False)
 
     @model_validator(mode="after")
     def setup_secret_authentication(self) -> "ClientUpsert":
         """Set up secret authentication"""
         if self.authn_method == ClientAuthnMethod.CLIENT_SECRET_POST:
             self.secret = tools.generate_client_secret()
+            self.hashed_secret = tools.hash_secret(secret=self.secret)
 
         return self
 
@@ -189,7 +191,7 @@ class Client(ClientBase):
     hashed_secret: str | None
 
     def to_output(self) -> "ClientOut":
-        return ClientOut(**{**self.model_dump(), "token_model_id": self.token_model.id})
+        return ClientOut(**{**dict(self), "token_model_id": self.token_model.id})
 
     def is_authenticated_by_secret(self, client_secret: str) -> bool:
         if (self.hashed_secret is None):
@@ -208,7 +210,7 @@ class Client(ClientBase):
         return redirect_uri in self.redirect_uris
 
     def are_response_types_allowed(self, response_types: List[constants.ResponseType]) -> bool:
-        return any([rt not in self.response_types for rt in response_types])
+        return all([rt in self.response_types for rt in response_types])
 
     def is_grant_type_allowed(self, grant_type: constants.GrantType) -> bool:
         return grant_type in self.grant_types
@@ -221,11 +223,12 @@ class ClientIn(ClientBase):
     token_model_id: str
 
     def to_upsert(self) -> ClientUpsert:
-        return ClientUpsert(**self.model_dump())
+        return ClientUpsert(**dict(self))
 
     @model_validator(mode="after")
     def only_authz_code_has_response_types(self) -> "ClientIn":
         """Response types are only allowed for the authorization code grant type"""
+
         if (constants.GrantType.AUTHORIZATION_CODE not in self.grant_types
            and self.response_types):
             raise ValueError(
@@ -254,9 +257,9 @@ class ClientIn(ClientBase):
         return self
 
     @model_validator(mode="after")
-    def client_without_authn_method_must_require_pcke(self) -> "ClientIn":
+    def client_without_authn_method_must_require_pkce(self) -> "ClientIn":
 
-        if (self.authn_method == ClientAuthnMethod.NONE and not self.is_pcke_required):
+        if (self.authn_method == ClientAuthnMethod.NONE and not self.is_pkce_required):
             raise ValueError(
                 "Clients without an authentication method must require PCKE"
             )
@@ -359,13 +362,13 @@ class AuthorizationCodeGrantContext(CommonValidationsGrantContext):
         return session
 
     @model_validator(mode="after")
-    def validate_pcke_requirement(self) -> "AuthorizationCodeGrantContext":
-        if self.client.is_pcke_required and self.session.code_challenge is None:
+    def validate_pkce_requirement(self) -> "AuthorizationCodeGrantContext":
+        if self.client.is_pkce_required and self.session.code_challenge is None:
             raise exceptions.InvalidPCKEException()
         return self
 
     @model_validator(mode="after")
-    def validate_pcke(self) -> "AuthorizationCodeGrantContext":
+    def validate_pkce(self) -> "AuthorizationCodeGrantContext":
         if self.session.code_challenge:
             # Raise exception when code verifier is not provided or it doesn't match the code challenge
             if self.code_verifier is None or not tools.is_pkce_valid(
@@ -417,8 +420,8 @@ class AuthorizeContext(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_pcke_requirement(self: "AuthorizeContext") -> "AuthorizeContext":
-        if self.client.is_pcke_required and self.code_challenge is None:
+    def validate_pkce_requirement(self: "AuthorizeContext") -> "AuthorizeContext":
+        if self.client.is_pkce_required and self.code_challenge is None:
             raise exceptions.PCKEIsRequiredException()
         return self
 

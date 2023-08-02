@@ -70,13 +70,11 @@ class InMemoryClientManager(ClientManager):
             response_types=client.response_types,
             grant_types=client.grant_types,
             scopes=client.scopes,
-            is_pcke_required=client.is_pcke_required,
+            is_pkce_required=client.is_pkce_required,
             token_model=await self.token_manager.get_token_model(
                 token_model_id=client.token_model_id
             ),
-            hashed_secret=tools.hash_secret(
-                secret=client.secret
-            ) if client.secret else None,
+            hashed_secret=client.hashed_secret,
             secret=client.secret,
             extra_params=client.extra_params
         )
@@ -99,13 +97,11 @@ class InMemoryClientManager(ClientManager):
             response_types=client.response_types,
             grant_types=client.grant_types,
             scopes=client.scopes,
-            is_pcke_required=client.is_pcke_required,
+            is_pkce_required=client.is_pkce_required,
             token_model=await self.token_manager.get_token_model(
                 token_model_id=client.token_model_id
             ),
-            hashed_secret=tools.hash_secret(
-                secret=client.secret
-            ) if client.secret else None,
+            hashed_secret=client.hashed_secret,
             secret=client.secret,
             extra_params=client.extra_params
         )
