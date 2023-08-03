@@ -2,7 +2,7 @@ import typing
 from fastapi import APIRouter, status
 
 from ..utils import schemas, constants, exceptions
-from ..auth_manager import manager as auth_manager
+from ..auth_manager import manager as manager
 
 router = APIRouter(
     tags=["management"]
@@ -17,7 +17,7 @@ router = APIRouter(
 )
 async def create_token_model(token_model_input: schemas.TokenModelIn) -> schemas.TokenModelOut:
 
-    token_model: schemas.TokenModel = await auth_manager.token_model_manager.create_token_model(token_model=token_model_input.to_upsert())
+    token_model: schemas.TokenModel = await manager.token_model_manager.create_token_model(token_model=token_model_input.to_upsert())
     return token_model.to_output()
 
 
@@ -26,7 +26,7 @@ async def create_token_model(token_model_input: schemas.TokenModelIn) -> schemas
     status_code=status.HTTP_200_OK,
 )
 async def get_token_model(token_model_id: str) -> schemas.TokenModelOut:
-    token_model: schemas.TokenModel = await auth_manager.token_model_manager.get_token_model(token_model_id=token_model_id)
+    token_model: schemas.TokenModel = await manager.token_model_manager.get_token_model(token_model_id=token_model_id)
     return token_model.to_output()
 
 
@@ -35,7 +35,7 @@ async def get_token_model(token_model_id: str) -> schemas.TokenModelOut:
     status_code=status.HTTP_200_OK,
 )
 async def get_token_models() -> typing.List[schemas.TokenModelOut]:
-    token_models: typing.List[schemas.TokenModel] = await auth_manager.token_model_manager.get_token_models()
+    token_models: typing.List[schemas.TokenModel] = await manager.token_model_manager.get_token_models()
     return [token_model.to_output() for token_model in token_models]
 
 
@@ -44,7 +44,7 @@ async def get_token_models() -> typing.List[schemas.TokenModelOut]:
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_token_model(token_model_id: str) -> None:
-    await auth_manager.token_model_manager.delete_token_model(token_model_id=token_model_id)
+    await manager.token_model_manager.delete_token_model(token_model_id=token_model_id)
 
 #################### Scope ####################
 
@@ -54,7 +54,7 @@ async def delete_token_model(token_model_id: str) -> None:
     status_code=status.HTTP_201_CREATED,
 )
 async def create_scope(scope_in: schemas.ScopeIn) -> None:
-    await auth_manager.scope_manager.create_scope(scope=scope_in.to_upsert())
+    await manager.scope_manager.create_scope(scope=scope_in.to_upsert())
 
 
 @router.get(
@@ -62,7 +62,7 @@ async def create_scope(scope_in: schemas.ScopeIn) -> None:
     status_code=status.HTTP_200_OK,
 )
 async def get_scope(scope_name: str) -> schemas.ScopeOut:
-    scope: schemas.Scope = await auth_manager.scope_manager.get_scope(scope_name=scope_name)
+    scope: schemas.Scope = await manager.scope_manager.get_scope(scope_name=scope_name)
     return scope.to_output()
 
 
@@ -71,7 +71,7 @@ async def get_scope(scope_name: str) -> schemas.ScopeOut:
     status_code=status.HTTP_200_OK,
 )
 async def get_scopes() -> typing.List[schemas.ScopeOut]:
-    scopes: typing.List[schemas.Scope] = await auth_manager.scope_manager.get_scopes()
+    scopes: typing.List[schemas.Scope] = await manager.scope_manager.get_scopes()
     return [scope.to_output() for scope in scopes]
 
 
@@ -80,7 +80,7 @@ async def get_scopes() -> typing.List[schemas.ScopeOut]:
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_client(scope_name: str) -> None:
-    await auth_manager.scope_manager.delete_scope(scope_name=scope_name)
+    await manager.scope_manager.delete_scope(scope_name=scope_name)
 
 #################### Client ####################
 
@@ -91,7 +91,7 @@ async def delete_client(scope_name: str) -> None:
     response_model_exclude_none=True,
 )
 async def create_client(client_in: schemas.ClientIn) -> schemas.ClientOut:
-    created_client = await auth_manager.client_manager.create_client(client=client_in.to_upsert())
+    created_client = await manager.client_manager.create_client(client=client_in.to_upsert())
     return created_client.to_output()
 
 
@@ -102,7 +102,7 @@ async def create_client(client_in: schemas.ClientIn) -> schemas.ClientOut:
     response_model_exclude_none=True,
 )
 async def get_client(client_id: str):
-    client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
+    client: schemas.Client = await manager.client_manager.get_client(client_id=client_id)
     return client.to_output()
 
 
@@ -112,7 +112,7 @@ async def get_client(client_id: str):
     response_model_exclude_none=True,
 )
 async def get_clients() -> typing.List[schemas.ClientOut]:
-    clients: typing.List[schemas.Client] = await auth_manager.client_manager.get_clients()
+    clients: typing.List[schemas.Client] = await manager.client_manager.get_clients()
     return [
         c.to_output() for c in clients
     ]

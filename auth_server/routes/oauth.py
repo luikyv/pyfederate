@@ -1,7 +1,7 @@
 from typing import Annotated, List
 from fastapi import APIRouter, status, Query, Form, Depends, Request, Response
 
-from ..auth_manager import manager as auth_manager
+from ..auth_manager import manager as manager
 from ..utils.constants import GrantType
 from ..utils import constants, telemetry, schemas, tools, helpers
 
@@ -102,7 +102,7 @@ async def authorize(
         code_challenge=code_challenge,
         code_challenge_method=code_challenge_method
     )
-    authn_policy: schemas.AuthnPolicy = auth_manager.pick_policy(
+    authn_policy: schemas.AuthnPolicy = manager.pick_policy(
         client=client, request=request
     )
     logger.info(f"Policy with ID: {authn_policy.id} retrieved for execution")
@@ -122,7 +122,7 @@ async def authorize(
         code_challenge=code_challenge,
         authz_code_creation_timestamp=tools.get_timestamp_now()
     )
-    await auth_manager.session_manager.create_session(session=session)
+    await manager.session_manager.create_session(session=session)
 
     return await helpers.manage_authentication(session, request)
 

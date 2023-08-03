@@ -1,3 +1,6 @@
+from typing import TypeVar
+import pytest
+
 from auth_server.utils import schemas, tools, constants
 
 ISSUER = "https://authorization-server.com/"
@@ -45,17 +48,20 @@ jwt_token_model = schemas.JWTTokenModel(
     signing_algorithm=constants.SigningAlgorithm.HS256
 )
 
-client = schemas.Client(
-    id=CLIENT_ID,
-    authn_method=constants.ClientAuthnMethod.CLIENT_SECRET_POST,
-    redirect_uris=[REDIRECT_URI],
-    response_types=[constants.ResponseType.CODE],
-    grant_types=[constants.GrantType.AUTHORIZATION_CODE],
-    scopes=SCOPES,
-    token_model=jwt_token_model,
-    is_pkce_required=False,
-    hashed_secret=HASHED_CLIENT_SECRET
-)
+
+@pytest.fixture
+def client() -> schemas.Client:
+    return schemas.Client(
+        id=CLIENT_ID,
+        authn_method=constants.ClientAuthnMethod.CLIENT_SECRET_POST,
+        redirect_uris=[REDIRECT_URI],
+        response_types=[constants.ResponseType.CODE],
+        grant_types=[constants.GrantType.AUTHORIZATION_CODE],
+        scopes=SCOPES,
+        token_model=jwt_token_model,
+        is_pkce_required=False,
+        hashed_secret=HASHED_CLIENT_SECRET
+    )
 
 
 client_in = schemas.ClientIn(
@@ -68,3 +74,9 @@ client_in = schemas.ClientIn(
     token_model_id=TOKEN_MODEL_ID,
     is_pkce_required=True,
 )
+
+T = TypeVar("T")
+
+
+async def async_return(o: T) -> T:
+    return o

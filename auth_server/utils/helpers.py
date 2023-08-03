@@ -4,7 +4,7 @@ import inspect
 
 from ..utils import constants, telemetry, schemas, tools, exceptions
 from .constants import GrantType, AuthnStatus
-from ..auth_manager import manager as auth_manager
+from ..auth_manager import manager
 
 logger = telemetry.get_logger(__name__)
 
@@ -23,7 +23,7 @@ async def get_authenticated_client(
     ] = None,
 ) -> schemas.Client:
 
-    client: schemas.Client = await auth_manager.client_manager.get_client(client_id=client_id)
+    client: schemas.Client = await manager.client_manager.get_client(client_id=client_id)
     if (client.authn_method == constants.ClientAuthnMethod.CLIENT_SECRET_POST):
         if (client_secret is None or not client.is_authenticated_by_secret(client_secret=client_secret)):
             raise exceptions.ClientIsNotAuthenticatedException()
@@ -38,7 +38,7 @@ async def get_client_as_form(
         ]
 ) -> schemas.Client:
 
-    return await auth_manager.client_manager.get_client(client_id=client_id)
+    return await manager.client_manager.get_client(client_id=client_id)
 
 
 async def get_client_as_query(
@@ -48,7 +48,7 @@ async def get_client_as_query(
         ]
 ) -> schemas.Client:
 
-    return await auth_manager.client_manager.get_client(client_id=client_id)
+    return await manager.client_manager.get_client(client_id=client_id)
 
 
 def setup_telemetry(
@@ -71,7 +71,7 @@ async def setup_session_by_callback_id(
     set the tracking and correlation IDs using the session information
     """
 
-    session: schemas.AuthnSession = await auth_manager.session_manager.get_session_by_callback_id(callback_id=callback_id)
+    session: schemas.AuthnSession = await manager.session_manager.get_session_by_callback_id(callback_id=callback_id)
     if session.authz_code:
         raise exceptions.AuthzCodeAlreadyIssuedException()
 
@@ -129,7 +129,7 @@ async def setup_session_by_authz_code(
     set the tracking and correlation IDs using the session information
     """
 
-    session: schemas.AuthnSession = await auth_manager.session_manager.get_session_by_authz_code(authz_code=authz_code)
+    session: schemas.AuthnSession = await manager.session_manager.get_session_by_authz_code(authz_code=authz_code)
     setup_telemetry(session=session)
     return session
 
@@ -147,7 +147,7 @@ async def create_token_session(authz_code_context: schemas.AuthorizationCodeGran
         token_model_id=authz_code_context.token_model.id,
         token_info=token_info
     )
-    await auth_manager.session_manager.create_token_session(
+    await manager.session_manager.create_token_session(
         session=token_session
     )
     return token_session
@@ -166,7 +166,7 @@ async def authorization_code_token_handler(
         session=session
     )
     # Delete the session from storage to make sure the authz code can no longer be used
-    await auth_manager.session_manager.delete_session(session_id=session.id)
+    await manager.session_manager.delete_session(session_id=session.id)
 
     # Generate the token
     authn_policy: schemas.AuthnPolicy = schemas.AUTHN_POLICIES[session.auth_policy_id]
@@ -202,7 +202,7 @@ async def update_token_session(token_session: schemas.TokenSession, token_model:
     token_session.token_info.expiration = timestamp_now
     token_session.token_info.expiration = timestamp_now + token_model.expires_in
     token_session.refresh_token = tools.generate_refresh_token()
-    await auth_manager.session_manager.update_token_session(session=token_session)
+    await manager.session_manager.update_token_session(session=token_session)
 
 
 async def refresh_token_handler(
@@ -210,7 +210,7 @@ async def refresh_token_handler(
 ) -> schemas.TokenResponse:
     if grant_context.refresh_token is None:
         raise exceptions.InvalidRefreshTokenException()
-    token_session: schemas.TokenSession = await auth_manager.session_manager.get_token_session_by_refresh_token(
+    token_session: schemas.TokenSession = await manager.session_manager.get_token_session_by_refresh_token(
         refresh_token=grant_context.refresh_token
     )
     # When creating the RefreshTokenGrantContext, the validations run
@@ -219,7 +219,7 @@ async def refresh_token_handler(
         token_session=token_session
     )
 
-    token_model: schemas.TokenModel = await auth_manager.token_model_manager.get_token_model(token_model_id=token_session.token_model_id)
+    token_model: schemas.TokenModel = await manager.token_model_manager.get_token_model(token_model_id=token_session.token_model_id)
     await update_token_session(token_session=token_session, token_model=token_model)
     return schemas.TokenResponse(
         access_token=token_model.generate_token(
@@ -255,7 +255,7 @@ async def get_in_progress_next_step(
 
     # Update the session to indicate the processing stopped at the current step
     session.next_authn_step_id = current_step.id
-    await auth_manager.session_manager.update_session(session=session)
+    await manager.session_manager.update_session(session=session)
 
 #################### Failure ####################
 
@@ -272,7 +272,7 @@ async def get_failure_next_step(
 
     # If the next step for a failure case is None, the policy failed,
     # then erase the session
-    await auth_manager.session_manager.delete_session(session_id=session.id)
+    await manager.session_manager.delete_session(session_id=session.id)
 
 #################### Success ####################
 
@@ -295,7 +295,7 @@ async def get_success_next_step(
     session.authz_code_creation_timestamp = tools.get_timestamp_now()
     # Since the policy finished successfully, make sure it cannot be called again
     session.next_authn_step_id = schemas.default_failure_step.id
-    await auth_manager.session_manager.update_session(session=session)
+    await manager.session_manager.update_session(session=session)
 
 
 #################### Handler Object ####################
