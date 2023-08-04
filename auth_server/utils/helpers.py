@@ -73,10 +73,32 @@ async def setup_session_by_callback_id(
 
     session: schemas.AuthnSession = await manager.session_manager.get_session_by_callback_id(callback_id=callback_id)
     if session.authz_code:
+        await manager.session_manager.delete_session(session_id=session.id)
         raise exceptions.AuthzCodeAlreadyIssuedException()
 
     setup_telemetry(session=session)
     return session
+
+
+def get_scopes(scope_string: str | None) -> List[str]:
+    if scope_string is None or scope_string == "":
+        return []
+    return scope_string.split(" ")
+
+
+def get_scopes_as_form(
+    scope: Annotated[
+        str | None,
+        Form(description="Space separeted list of scopes")
+    ] = None
+) -> List[str]:
+    return get_scopes(scope_string=scope)
+
+
+def get_scopes_as_query(
+    scope: Annotated[str, Query(description="Space separeted list of scopes")],
+) -> List[str]:
+    return get_scopes(scope_string=scope)
 
 
 def get_response_types(

@@ -21,13 +21,13 @@ router = APIRouter(
 async def get_token(
     client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
     grant_type: Annotated[GrantType, Form()],
+    requested_scopes: Annotated[
+        List[str],
+        Depends(helpers.get_scopes_as_form)
+    ],
     code: Annotated[
         str | None,
         Form(description="Authorization code")
-    ] = None,
-    scope: Annotated[
-        str | None,
-        Form(description="Space separeted list of scopes")
     ] = None,
     redirect_uri: Annotated[
         str | None,
@@ -44,8 +44,6 @@ async def get_token(
     ] = None,
     correlation_id: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> schemas.TokenResponse:
-
-    requested_scopes: List[str] = scope.split(" ") if scope is not None else []
 
     grant_context = schemas.GrantContext(
         grant_type=grant_type,
@@ -76,7 +74,7 @@ async def authorize(
         str,
         Query(description="URL to where the user will be redirected to once he is authenticated")
     ],
-    scope: Annotated[str, Query(description="Space separeted list of scopes")],
+    request_scopes: Annotated[List[str], Depends(helpers.get_scopes_as_query)],
     state: Annotated[
         str,
         Query(max_length=constants.STATE_PARAM_MAX_LENGTH,
@@ -96,7 +94,7 @@ async def authorize(
     # When creating the AuthorizeContext, the defined validation run
     schemas.AuthorizeContext(
         client=client,
-        requested_scopes=scope.split(" "),
+        requested_scopes=request_scopes,
         response_types=response_types,
         redirect_uri=redirect_uri,
         code_challenge=code_challenge,
@@ -117,7 +115,7 @@ async def authorize(
         state=state,
         auth_policy_id=authn_policy.id,
         next_authn_step_id=authn_policy.first_step.id,
-        requested_scopes=scope.split(" "),
+        requested_scopes=request_scopes,
         authz_code=None,
         code_challenge=code_challenge,
         authz_code_creation_timestamp=tools.get_timestamp_now()

@@ -53,14 +53,45 @@ jwt_token_model = schemas.JWTTokenModel(
 def client() -> schemas.Client:
     return schemas.Client(
         id=CLIENT_ID,
-        authn_method=constants.ClientAuthnMethod.CLIENT_SECRET_POST,
+        authn_method=constants.ClientAuthnMethod.NONE,
         redirect_uris=[REDIRECT_URI],
         response_types=[constants.ResponseType.CODE],
-        grant_types=[constants.GrantType.AUTHORIZATION_CODE],
+        grant_types=[
+            constants.GrantType.AUTHORIZATION_CODE,
+            constants.GrantType.CLIENT_CREDENTIALS,
+            constants.GrantType.REFRESH_TOKEN
+        ],
         scopes=SCOPES,
         token_model=jwt_token_model,
         is_pkce_required=False,
-        hashed_secret=HASHED_CLIENT_SECRET
+        hashed_secret=None
+    )
+
+
+@pytest.fixture
+def no_authentication_client(client: schemas.Client) -> schemas.Client:
+    return client
+
+
+@pytest.fixture
+def secret_authenticated_client(client: schemas.Client) -> schemas.Client:
+    client.authn_method = constants.ClientAuthnMethod.CLIENT_SECRET_POST
+    client.hashed_secret = HASHED_CLIENT_SECRET
+    return client
+
+
+@pytest.fixture
+def client_credentials_grant_context(secret_authenticated_client: schemas.Client) -> schemas.GrantContext:
+    return schemas.GrantContext(
+        grant_type=constants.GrantType.CLIENT_CREDENTIALS,
+        client=secret_authenticated_client,
+        token_model=secret_authenticated_client.token_model,
+        requested_scopes=secret_authenticated_client.scopes,
+        redirect_uri=None,
+        refresh_token=None,
+        authz_code=None,
+        code_verifier=None,
+        correlation_id=None
     )
 
 
