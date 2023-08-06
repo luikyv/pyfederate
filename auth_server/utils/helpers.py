@@ -156,7 +156,10 @@ async def setup_session_by_authz_code(
     return session
 
 
-async def create_token_session(authz_code_context: schemas.AuthorizationCodeGrantContext, token_info: schemas.TokenInfo) -> schemas.TokenSession:
+async def create_token_session(
+    authz_code_context: schemas.AuthorizationCodeGrantContext,
+    token_info: schemas.TokenInfo
+) -> schemas.TokenSession:
 
     token_session = schemas.TokenSession(
         token_id=token_info.id,

@@ -1,21 +1,22 @@
 from typing import Dict, Any
 import pytest
-from unittest.mock import Mock, patch
-import asyncio
+from unittest.mock import Mock, patch, MagicMock
 import jwt
 
 from tests import conftest
 from auth_server.utils import constants, schemas, helpers, exceptions
-from auth_server.auth_manager import manager
 
 #################### Test helpers.get_authenticated_client ####################
 
 
 @pytest.mark.asyncio
-async def test_get_authenticated_client_without_authentication(no_authentication_client: schemas.Client) -> None:
+@patch("auth_server.utils.helpers.manager")
+async def test_get_authenticated_client_without_authentication(
+    mocked_manager: MagicMock,
+    no_authentication_client: schemas.Client
+) -> None:
 
-    manager._client_manager = Mock()
-    manager.client_manager.get_client = Mock(
+    mocked_manager.client_manager.get_client = Mock(
         side_effect=lambda *args, **kwargs: conftest.async_return(o=no_authentication_client))
 
     authenticated_client: schemas.Client = await helpers.get_authenticated_client(
@@ -27,13 +28,16 @@ async def test_get_authenticated_client_without_authentication(no_authentication
 
 
 @pytest.mark.asyncio
-async def test_get_authenticated_client_no_secret_provided(secret_authenticated_client: schemas.Client) -> None:
+@patch("auth_server.utils.helpers.manager")
+async def test_get_authenticated_client_no_secret_provided(
+    mocked_manager: MagicMock,
+    secret_authenticated_client: schemas.Client,
+) -> None:
     """
     Verify that not providing a secret for a client authenticates with secret raises an exception
     """
 
-    manager._client_manager = Mock()
-    manager.client_manager.get_client = Mock(
+    mocked_manager.client_manager.get_client = Mock(
         side_effect=lambda *args, **kwargs: conftest.async_return(o=secret_authenticated_client))
 
     with pytest.raises(exceptions.ClientIsNotAuthenticatedException):
@@ -44,13 +48,16 @@ async def test_get_authenticated_client_no_secret_provided(secret_authenticated_
 
 
 @pytest.mark.asyncio
-async def test_get_authenticated_client_invalid_secret(secret_authenticated_client: schemas.Client) -> None:
+@patch("auth_server.utils.helpers.manager")
+async def test_get_authenticated_client_invalid_secret(
+    mocked_manager: MagicMock,
+    secret_authenticated_client: schemas.Client
+) -> None:
     """
     Verify that providing the wrong secret for a client authenticates with secret raises an exception
     """
 
-    manager._client_manager = Mock()
-    manager.client_manager.get_client = Mock(
+    mocked_manager.client_manager.get_client = Mock(
         side_effect=lambda *args, **kwargs: conftest.async_return(o=secret_authenticated_client))
 
     with pytest.raises(exceptions.ClientIsNotAuthenticatedException):
@@ -61,10 +68,13 @@ async def test_get_authenticated_client_invalid_secret(secret_authenticated_clie
 
 
 @pytest.mark.asyncio
-async def test_get_authenticated_client_valid_secret(secret_authenticated_client: schemas.Client) -> None:
+@patch("auth_server.utils.helpers.manager")
+async def test_get_authenticated_client_valid_secret(
+    mocked_manager: MagicMock,
+    secret_authenticated_client: schemas.Client
+) -> None:
 
-    manager._client_manager = Mock()
-    manager.client_manager.get_client = Mock(
+    mocked_manager.client_manager.get_client = Mock(
         side_effect=lambda *args, **kwargs: conftest.async_return(o=secret_authenticated_client))
 
     authenticated_client: schemas.Client = await helpers.get_authenticated_client(
@@ -105,24 +115,13 @@ def test_get_scopes() -> None:
 
 @pytest.mark.asyncio
 async def test_client_credentials_token_handler_grant_not_allowed(
-    secret_authenticated_client: schemas.Client
+    client_credentials_grant_context: schemas.GrantContext
 ) -> None:
 
-    secret_authenticated_client.grant_types = []
-    grant_context = schemas.GrantContext(
-        grant_type=constants.GrantType.CLIENT_CREDENTIALS,
-        client=secret_authenticated_client,
-        token_model=secret_authenticated_client.token_model,
-        requested_scopes=[],
-        redirect_uri=None,
-        refresh_token=None,
-        authz_code=None,
-        code_verifier=None,
-        correlation_id=None
-    )
+    client_credentials_grant_context.client.grant_types = []
 
     with pytest.raises(exceptions.GrantTypeNotAllowedException):
-        await helpers.client_credentials_token_handler(grant_context=grant_context)
+        await helpers.client_credentials_token_handler(grant_context=client_credentials_grant_context)
 
 
 @pytest.mark.asyncio
@@ -154,9 +153,84 @@ async def test_client_credentials_token_handler_generate_jwt_token(
 
     token_response: schemas.TokenResponse = await helpers.client_credentials_token_handler(grant_context=client_credentials_grant_context)
     payload: Dict[str, Any] = jwt.decode(token_response.access_token,
-                                         key=conftest.jwt_token_model.key,
-                                         algorithms=[conftest.jwt_token_model.signing_algorithm.value])
+                                         key=conftest.HMAC_SIGNING_KEY,
+                                         algorithms=[conftest.SIGNING_ALGORITHM.value])
 
     assert payload["sub"] == client_credentials_grant_context.client.id
     assert payload["scope"] == " ".join(
         client_credentials_grant_context.client.scopes)
+
+
+#################### Test helpers.create_token_session ####################
+
+@pytest.mark.asyncio
+@patch("auth_server.utils.helpers.manager")
+async def test_create_token_session(
+    mocked_manager: MagicMock,
+    authorization_code_grant_context: schemas.GrantContext,
+    authentication_session: schemas.AuthnSession,
+    token_info: schemas.TokenInfo
+) -> None:
+
+    mocked_manager.session_manager.create_token_session = Mock(
+        side_effect=lambda *args, **kwargs: conftest.async_return(o=None))
+
+    token_session: schemas.TokenSession = await helpers.create_token_session(
+        authz_code_context=schemas.AuthorizationCodeGrantContext(
+            **dict(authorization_code_grant_context),
+            session=authentication_session
+        ),
+        token_info=token_info
+    )
+
+    mocked_manager.session_manager.create_token_session.assert_called_once()
+    assert token_session.token_id == token_info.id
+
+
+#################### Test helpers.authorization_code_token_handler ####################
+
+
+@pytest.mark.asyncio
+async def test_authorization_code_token_handler_no_code_provided(
+    authorization_code_grant_context: schemas.GrantContext,
+) -> None:
+
+    authorization_code_grant_context.authz_code = None
+
+    with pytest.raises(exceptions.InvalidAuthorizationCodeException):
+        await helpers.authorization_code_token_handler(
+            grant_context=authorization_code_grant_context
+        )
+
+
+@pytest.mark.asyncio
+@patch("auth_server.utils.helpers.manager")
+async def test_authorization_code_token_handler_jwt_response(
+    mocked_manager: MagicMock,
+    authorization_code_grant_context: schemas.GrantContext,
+    authentication_session: schemas.AuthnSession,
+    autentication_policy: schemas.AuthnPolicy
+) -> None:
+
+    # Arrange
+    mocked_manager.session_manager.get_session_by_authz_code = Mock(
+        side_effect=lambda *args, **kwargs: conftest.async_return(o=authentication_session))
+    mocked_manager.session_manager.delete_session = Mock(
+        side_effect=lambda *args, **kwargs: conftest.async_return(o=None))
+    mocked_manager.session_manager.create_token_session = Mock(
+        side_effect=lambda *args, **kwargs: conftest.async_return(o=None))
+
+    # Act
+    token_response: schemas.TokenResponse = await helpers.authorization_code_token_handler(
+        grant_context=authorization_code_grant_context
+    )
+
+    # Assert
+    mocked_manager.session_manager.delete_session.assert_called_once()
+    assert token_response.access_token
+    payload: Dict[str, Any] = jwt.decode(token_response.access_token,
+                                         key=conftest.HMAC_SIGNING_KEY,
+                                         algorithms=[conftest.SIGNING_ALGORITHM.value])
+    assert payload["sub"] == authentication_session.user_id
+    assert payload["scope"] == " ".join(
+        authentication_session.requested_scopes)
