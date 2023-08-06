@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 class Environment(Enum):
     PROD = "PROD"
     TEST = "TEST"
+    LOCAL = "LOCAL"
 
 
 class HTTPHeaders(Enum):
@@ -79,9 +80,11 @@ class AuthnStatus(Enum):
 
 
 ########## Configurations ##########
-ENVIRONMENT = Environment(os.getenv("ENVIRONMENT", "TEST"))
-if ENVIRONMENT == Environment.TEST:
-    load_dotenv("test.env")
+ENVIRONMENT = Environment(os.getenv("ENVIRONMENT", "LOCAL"))
+if ENVIRONMENT == Environment.LOCAL:
+    load_dotenv()
+elif ENVIRONMENT == Environment.TEST:
+    load_dotenv("tests/test.env")
 LOG_LEVEL = logging.getLevelName(os.environ.get("LOG_LEVEL", "DEBUG"))
 CLIENT_ID_MIN_LENGH = int(os.getenv("CLIENT_ID_MIN_LENGH", 20))
 CLIENT_ID_MAX_LENGH = int(os.getenv("CLIENT_ID_MAX_LENGH", 25))
@@ -93,8 +96,7 @@ REFRESH_TOKEN_LENGTH = int(os.getenv("REFRESH_TOKEN_LENGTH", 20))
 AUTHORIZATION_CODE_LENGTH = int(os.getenv("AUTHORIZATION_CODE_LENGTH", 20))
 STATE_PARAM_MAX_LENGTH = int(os.getenv("STATE_PARAM_MAX_LENGTH", 100))
 SECRET_ENCODING = os.getenv("SECRET_ENCODING", "utf-8")
-AUTHORIZATION_CODE_TIMEOUT = int(
-    os.getenv("AUTHORIZATION_SESSION_TIMEOUT", 300))
+AUTHORIZATION_CODE_TIMEOUT = int(os.getenv("AUTHORIZATION_SESSION_TIMEOUT", 300))
 SERVER_PORT = int(os.getenv("SERVER_PORT", 8000))
 BEARER_TOKEN_TYPE = "Bearer"
 
@@ -107,17 +109,13 @@ class JWKInfo:
 
 
 # Load the privates JWKs
-PRIVATE_JWKS: Dict[
-    str, JWKInfo
-] = {
+PRIVATE_JWKS: Dict[str, JWKInfo] = {
     key["kid"]: JWKInfo(
-        key_id=key["kid"],
-        key=key["k"],
-        signing_algorithm=SigningAlgorithm(key["alg"])
-    ) for key in json.loads(
+        key_id=key["kid"], key=key["k"], signing_algorithm=SigningAlgorithm(key["alg"])
+    )
+    for key in json.loads(
         # The privates jwks are passed as a base64 enconded json through the env var PRIVATE_JWKS_JSON
-        base64.b64decode(os.environ["PRIVATE_JWKS_JSON"]).decode(
-            SECRET_ENCODING)
+        base64.b64decode(os.environ["PRIVATE_JWKS_JSON"]).decode(SECRET_ENCODING)
     )["keys"]
 }
 
@@ -125,6 +123,8 @@ PRIVATE_JWKS: Dict[
 JWK_IDS_LITERAL = Literal[tuple(PRIVATE_JWKS.keys())]  # type: ignore
 CORRELATION_ID_HEADER_TYPE = Annotated[
     str | None,
-    Header(alias=HTTPHeaders.X_CORRELATION_ID.value,
-           description="ID that will added in the logs to help debugging")
+    Header(
+        alias=HTTPHeaders.X_CORRELATION_ID.value,
+        description="ID that will added in the logs to help debugging",
+    ),
 ]

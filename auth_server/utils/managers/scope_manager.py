@@ -4,7 +4,7 @@ from sqlalchemy import delete, Engine
 from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
 
-from .. import schemas, models, telemetry, exceptions
+from .. import schemas, models, telemetry, exceptions, tools
 
 logger = telemetry.get_logger(__name__)
 
@@ -12,7 +12,6 @@ logger = telemetry.get_logger(__name__)
 
 
 class ScopeManager(ABC):
-
     @abstractmethod
     async def create_scope(self, scope: schemas.ScopeUpsert) -> None:
         """
@@ -45,51 +44,54 @@ class ScopeManager(ABC):
     async def delete_scope(self, scope_name: str) -> None:
         pass
 
+
 ######################################## Implementations ########################################
 
 #################### Mock ####################
 
 
 class InMemoryScopeManager(ScopeManager):
-
-    def __init__(self, max_number: int = 10) -> None:
-        self.scopes: typing.Dict[str, schemas.Scope] = {}
+    def __init__(self, max_number: int = 100) -> None:
+        self._max_number = max_number
+        self._scopes: typing.Dict[str, schemas.Scope] = {}
 
     async def create_scope(self, scope: schemas.ScopeUpsert) -> None:
 
-        if (scope.name in self.scopes):
+        if scope.name in self._scopes:
             logger.info(f"{scope.name} already exists")
             raise exceptions.ScopeAlreadyExistsException()
 
-        self.scopes[scope.name] = schemas.Scope(**scope.model_dump())
+        if len(self._scopes) >= self._max_number:
+            tools.remove_oldest_item(self._scopes)
+        self._scopes[scope.name] = schemas.Scope(**dict(scope))
 
     async def update_scope(self, scope: schemas.ScopeUpsert) -> None:
 
-        if (scope.name not in self.scopes):
+        if scope.name not in self._scopes:
             logger.info(f"{scope.name} does not exist")
             raise exceptions.ScopeDoesNotExistException()
 
-        self.scopes[scope.name] = schemas.Scope(**scope.model_dump())
+        self._scopes[scope.name] = schemas.Scope(**scope.model_dump())
 
     async def get_scope(self, scope_name: str) -> schemas.Scope:
 
-        if (scope_name not in self.scopes):
+        if scope_name not in self._scopes:
             logger.info(f"{scope_name} does not exist")
             raise exceptions.ScopeDoesNotExistException()
 
-        return self.scopes[scope_name]
+        return self._scopes[scope_name]
 
     async def get_scopes(self) -> typing.List[schemas.Scope]:
-        return list(self.scopes.values())
+        return list(self._scopes.values())
 
     async def delete_scope(self, scope_name: str) -> None:
-        self.scopes.pop(scope_name)
+        self._scopes.pop(scope_name)
+
 
 #################### OLTP ####################
 
 
 class OLTPScopeManager(ScopeManager):
-
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
@@ -104,10 +106,11 @@ class OLTPScopeManager(ScopeManager):
 
     async def get_scope(self, scope_name: str) -> schemas.Scope:
         with Session(self.engine) as db:
-            scope_db = db.query(models.Scope).filter(
-                models.Scope.name == scope_name).first()
+            scope_db = (
+                db.query(models.Scope).filter(models.Scope.name == scope_name).first()
+            )
 
-        if (scope_db is None):
+        if scope_db is None:
             raise exceptions.ScopeDoesNotExistException()
 
         return scope_db.to_schema()

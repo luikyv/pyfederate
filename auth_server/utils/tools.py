@@ -35,25 +35,25 @@ def generate_uuid() -> str:
 
 
 def generate_fixed_size_random_string(length: int) -> str:
-    return "".join(
-        secrets.choice(alphabet)
-        for _ in range(length)
-    )
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 def generate_random_string(min_length: int, max_length: int) -> str:
     return "".join(
-        secrets.choice(alphabet)
-        for _ in range(randint(min_length, max_length))
+        secrets.choice(alphabet) for _ in range(randint(min_length, max_length))
     )
 
 
 def generate_client_id() -> str:
-    return generate_random_string(constants.CLIENT_ID_MIN_LENGH, constants.CLIENT_ID_MAX_LENGH)
+    return generate_random_string(
+        constants.CLIENT_ID_MIN_LENGH, constants.CLIENT_ID_MAX_LENGH
+    )
 
 
 def generate_client_secret() -> str:
-    return generate_random_string(constants.CLIENT_SECRET_MIN_LENGH, constants.CLIENT_SECRET_MAX_LENGH)
+    return generate_random_string(
+        constants.CLIENT_SECRET_MIN_LENGH, constants.CLIENT_SECRET_MAX_LENGH
+    )
 
 
 def generate_callback_id() -> str:
@@ -74,8 +74,7 @@ def generate_refresh_token() -> str:
 
 def hash_secret(secret: str) -> str:
     return bcrypt.hashpw(
-        secret.encode(constants.SECRET_ENCODING),
-        bcrypt.gensalt()
+        secret.encode(constants.SECRET_ENCODING), bcrypt.gensalt()
     ).decode(constants.SECRET_ENCODING)
 
 
@@ -88,14 +87,20 @@ def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
 
 
 def is_pkce_valid(code_verifier: str, code_challenge: str) -> bool:
-    hashed_code_verifier = base64.urlsafe_b64encode(
-        sha256(code_verifier.encode(constants.SECRET_ENCODING)).digest()
-    ).decode(constants.SECRET_ENCODING).replace("=", "")  # Remove padding '='
+    hashed_code_verifier = (
+        base64.urlsafe_b64encode(
+            sha256(code_verifier.encode(constants.SECRET_ENCODING)).digest()
+        )
+        .decode(constants.SECRET_ENCODING)
+        .replace("=", "")
+    )  # Remove padding '='
     return hashed_code_verifier == code_challenge
 
 
 def to_base64_string(extra_params: Dict[str, str]) -> str:
-    return base64.b64encode(json.dumps(extra_params).encode(constants.SECRET_ENCODING)).decode(constants.SECRET_ENCODING)
+    return base64.b64encode(
+        json.dumps(extra_params).encode(constants.SECRET_ENCODING)
+    ).decode(constants.SECRET_ENCODING)
 
 
 def to_json(base64_string: str) -> Dict[str, str]:
@@ -104,3 +109,8 @@ def to_json(base64_string: str) -> Dict[str, str]:
 
 def get_timestamp_now() -> int:
     return int(time.time())
+
+
+def remove_oldest_item(d: Dict) -> None:
+    first_key = next(iter(d))
+    d.pop(first_key)
