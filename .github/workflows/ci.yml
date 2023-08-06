@@ -1,7 +1,7 @@
 name: Test
 run-name: ${{ github.actor }} opened a PR - Running Tests
 
-on: [pull_request]
+on: [push]
 
 jobs:
   test:
