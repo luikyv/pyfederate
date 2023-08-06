@@ -8,9 +8,12 @@ from fastapi import Header
 import base64
 from dotenv import load_dotenv
 
-load_dotenv()
-
 ########## Enumerations ##########
+
+
+class Environment(Enum):
+    PROD = "PROD"
+    TEST = "TEST"
 
 
 class HTTPHeaders(Enum):
@@ -76,6 +79,9 @@ class AuthnStatus(Enum):
 
 
 ########## Configurations ##########
+ENVIRONMENT = Environment(os.getenv("ENVIRONMENT", "TEST"))
+if ENVIRONMENT == Environment.TEST:
+    load_dotenv("test.env")
 LOG_LEVEL = logging.getLevelName(os.environ.get("LOG_LEVEL", "DEBUG"))
 CLIENT_ID_MIN_LENGH = int(os.getenv("CLIENT_ID_MIN_LENGH", 20))
 CLIENT_ID_MAX_LENGH = int(os.getenv("CLIENT_ID_MAX_LENGH", 25))
