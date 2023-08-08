@@ -59,7 +59,7 @@ class InMemoryScopeManager(ScopeManager):
 
         if scope.name in self._scopes:
             logger.info(f"{scope.name} already exists")
-            raise exceptions.ScopeAlreadyExistsException()
+            raise exceptions.EntityAlreadyExistsException()
 
         if len(self._scopes) >= self._max_number:
             tools.remove_oldest_item(self._scopes)
@@ -69,7 +69,7 @@ class InMemoryScopeManager(ScopeManager):
 
         if scope.name not in self._scopes:
             logger.info(f"{scope.name} does not exist")
-            raise exceptions.ScopeDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         self._scopes[scope.name] = schemas.Scope(**scope.model_dump())
 
@@ -77,7 +77,7 @@ class InMemoryScopeManager(ScopeManager):
 
         if scope_name not in self._scopes:
             logger.info(f"{scope_name} does not exist")
-            raise exceptions.ScopeDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         return self._scopes[scope_name]
 
@@ -111,7 +111,7 @@ class OLTPScopeManager(ScopeManager):
             )
 
         if scope_db is None:
-            raise exceptions.ScopeDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         return scope_db.to_schema()
 

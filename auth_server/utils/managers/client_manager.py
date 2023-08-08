@@ -17,7 +17,7 @@ class ClientManager(ABC):
     async def create_client(self, client: schemas.ClientUpsert) -> schemas.Client:
         """
         Throws:
-            exceptions.ClientAlreadyExists
+            exceptions.EntityAlreadyExistsException
         """
         pass
 
@@ -25,7 +25,7 @@ class ClientManager(ABC):
     async def update_client(self, client: schemas.ClientUpsert) -> schemas.Client:
         """
         Throws:
-            exceptions.ClientDoesNotExist
+            exceptions.EntityDoesNotExistException
         """
         pass
 
@@ -33,7 +33,7 @@ class ClientManager(ABC):
     async def get_client(self, client_id: str) -> schemas.Client:
         """
         Throws:
-            exceptions.ClientDoesNotExist
+            exceptions.EntityDoesNotExistException
         """
         pass
 
@@ -61,7 +61,7 @@ class InMemoryClientManager(ClientManager):
 
         if client.id in self._clients:
             logger.info(f"Client with ID: {client.id} already exists")
-            raise exceptions.ClientAlreadyExistsException()
+            raise exceptions.EntityAlreadyExistsException()
 
         client_ = schemas.Client(
             id=client.id,
@@ -90,7 +90,7 @@ class InMemoryClientManager(ClientManager):
 
         if client.id not in self._clients:
             logger.info(f"Client with ID: {client.id} does not exist")
-            raise exceptions.ClientDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         client_ = schemas.Client(
             id=client.id,
@@ -117,7 +117,7 @@ class InMemoryClientManager(ClientManager):
         client: schemas.Client | None = self._clients.get(client_id, None)
         if not client:
             logger.info(f"Client with ID: {client_id} does not exist")
-            raise exceptions.ClientDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         return client
 
@@ -162,7 +162,7 @@ class OLTPClientManager(ClientManager):
             )
 
         if client_db is None:
-            raise exceptions.ClientDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         return client_db.to_schema()
 

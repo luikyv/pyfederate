@@ -18,11 +18,9 @@ class TokenModel(Base):
     token_type: Mapped[str] = mapped_column(String(10))
     issuer: Mapped[str] = mapped_column(String(200))
     expires_in: Mapped[int] = mapped_column(Integer())
-    key_id: Mapped[str | None] = mapped_column(
-        String(50), nullable=True)
-    signing_algorithm: Mapped[
-        str | None
-    ] = mapped_column(String(10), nullable=True)
+    key_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    signing_algorithm: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    is_refreshable: Mapped[bool] = mapped_column(Boolean())
 
     def to_schema(self) -> schemas.TokenModel:
         if self.token_type == TokenType.JWT.value:
@@ -36,16 +34,14 @@ class TokenModel(Base):
                 expires_in=self.expires_in,
                 key_id=self.key_id,
                 key=jwk.key,
-                signing_algorithm=jwk.signing_algorithm
+                signing_algorithm=jwk.signing_algorithm,
+                is_refreshable=self.is_refreshable,
             )
 
         raise NotImplementedError()
 
     @classmethod
-    def to_db_model(
-        cls,
-        token_model: schemas.TokenModelUpsert
-    ) -> "TokenModel":
+    def to_db_model(cls, token_model: schemas.TokenModelUpsert) -> "TokenModel":
         return TokenModel(
             id=token_model.id,
             token_type=token_model.token_type.value,
@@ -54,7 +50,9 @@ class TokenModel(Base):
             key_id=token_model.key_id,
             signing_algorithm=constants.PRIVATE_JWKS[
                 token_model.key_id
-            ].signing_algorithm if token_model.key_id else None
+            ].signing_algorithm
+            if token_model.key_id
+            else None,
         )
 
 
@@ -65,21 +63,12 @@ class Scope(Base):
     description: Mapped[str] = mapped_column(String(200))
 
     def to_schema(self) -> schemas.Scope:
-        return schemas.Scope(
-            name=self.name,
-            description=self.description
-        )
+        return schemas.Scope(name=self.name, description=self.description)
 
     @classmethod
-    def to_db_model(
-        cls,
-        scope: schemas.Scope
-    ) -> "Scope":
+    def to_db_model(cls, scope: schemas.Scope) -> "Scope":
 
-        return Scope(
-            name=scope.name,
-            description=scope.description
-        )
+        return Scope(name=scope.name, description=scope.description)
 
 
 class Client(Base):
@@ -87,8 +76,7 @@ class Client(Base):
 
     id: Mapped[str] = mapped_column(String(50), primary_key=True)
     authn_method: Mapped[str] = mapped_column(String(50))
-    hashed_secret: Mapped[str | None] = mapped_column(
-        String(100), nullable=True)
+    hashed_secret: Mapped[str | None] = mapped_column(String(100), nullable=True)
     redirect_uris: Mapped[str] = mapped_column(String(1000))
     response_types: Mapped[str] = mapped_column(String(100))
     grant_types: Mapped[str] = mapped_column(String(200))
@@ -101,7 +89,7 @@ class Client(Base):
             Column("client_id", ForeignKey("clients.id")),  # type: ignore
             Column("scope_name", ForeignKey("scopes.name")),  # type: ignore
         ),
-        lazy="joined"
+        lazy="joined",
     )
 
     token_model_id: Mapped[int] = mapped_column(ForeignKey("token_models.id"))
@@ -114,14 +102,18 @@ class Client(Base):
             secret=secret,
             hashed_secret=self.hashed_secret,
             redirect_uris=self.redirect_uris.split(","),
-            response_types=[constants.ResponseType(
-                response_type) for response_type in self.response_types.split(",")],
-            grant_types=[constants.GrantType(
-                grant_type) for grant_type in self.grant_types.split(",")],
+            response_types=[
+                constants.ResponseType(response_type)
+                for response_type in self.response_types.split(",")
+            ],
+            grant_types=[
+                constants.GrantType(grant_type)
+                for grant_type in self.grant_types.split(",")
+            ],
             scopes=[scope.name for scope in self.scopes],
             is_pkce_required=self.is_pkce_required,
             token_model=self.token_model.to_schema(),
-            extra_params=tools.to_json(base64_string=self.extra_params)
+            extra_params=tools.to_json(base64_string=self.extra_params),
         )
 
     @classmethod
@@ -133,16 +125,12 @@ class Client(Base):
         return Client(
             id=client.id,
             authn_method=client.authn_method.value,
-            hashed_secret=tools.hash_secret(
-                client.secret
-            ) if client.secret else None,
+            hashed_secret=tools.hash_secret(client.secret) if client.secret else None,
             redirect_uris=",".join(client.redirect_uris),
             response_types=",".join([r.value for r in client.response_types]),
             grant_types=",".join([gt.value for gt in client.grant_types]),
             is_pkce_required=client.is_pkce_required,
             scopes=scopes,
             token_model_id=client.token_model_id,
-            extra_params=tools.to_base64_string(
-                extra_params=client.extra_params
-            )
+            extra_params=tools.to_base64_string(extra_params=client.extra_params),
         )

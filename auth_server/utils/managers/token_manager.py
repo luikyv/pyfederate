@@ -58,7 +58,7 @@ class InMemoryTokenModelManager(TokenModelManager):
     ) -> schemas.TokenModel:
         if token_model.id in self._token_models:
             logger.info(f"Token model with ID: {token_model.id} already exists")
-            raise exceptions.TokenModelAlreadyExistsException()
+            raise exceptions.EntityAlreadyExistsException()
 
         if token_model.token_type == constants.TokenType.JWT:
             self._token_models[token_model.id] = schemas.JWTTokenModel(
@@ -81,7 +81,7 @@ class InMemoryTokenModelManager(TokenModelManager):
 
         if token_model_id not in self._token_models:
             logger.info(f"Token model with ID: {token_model_id} does not exist")
-            raise exceptions.TokenModelDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         return self._token_models[token_model_id]
 
@@ -126,7 +126,7 @@ class OLTPTokenModelManager(TokenModelManager):
             )
 
         if token_model_db is None:
-            raise exceptions.TokenModelDoesNotExistException()
+            raise exceptions.EntityDoesNotExistException()
 
         return token_model_db.to_schema()
 
