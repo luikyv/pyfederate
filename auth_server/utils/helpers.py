@@ -138,6 +138,14 @@ def validate_client_credentials_grant(grant_context: schemas.GrantContext) -> No
             error_description=f"grant type not allowed",
         )
 
+    if not grant_context.client.are_scopes_allowed(
+        requested_scopes=grant_context.requested_scopes
+    ):
+        raise exceptions.JsonResponseException(
+            error=constants.ErrorCode.INVALID_SCOPE,
+            error_description=f"scope not allowed",
+        )
+
     if (
         grant_context.redirect_uri
         or grant_context.authz_code
