@@ -14,7 +14,7 @@ app.include_router(management.router)
 ######################################## Shared ########################################
 
 
-@app.get("/healthcheck", status_code=status.HTTP_204_NO_CONTENT)
+@app.get("/healthcheck", status_code=status.HTTP_200_OK)
 def check_health() -> None:
     return
 
@@ -49,20 +49,23 @@ async def validation_exception_handler(request, exc):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
-            "error": constants.ErrorCode.INVALID_REQUEST,
+            "error": constants.ErrorCode.INVALID_REQUEST.name.lower(),
             "error_description": str(exc),
         },
     )
 
 
-#################### Management Exceptions ####################
+#################### Custom Exceptions ####################
 
 
 @app.exception_handler(exceptions.JsonResponseException)
 def handle_json_exception(_: Request, exc: exceptions.JsonResponseException):
     return JSONResponse(
         status_code=exc.error.value,
-        content={"error": exc.error.value, "error_description": exc.error_description},
+        content={
+            "error": exc.error.name.lower(),
+            "error_description": exc.error_description,
+        },
     )
 
 
@@ -72,9 +75,29 @@ def handle_redirect_exception(_: Request, exc: exceptions.RedirectResponseExcept
         url=tools.prepare_redirect_url(
             url=exc.redirect_uri,
             params={
-                "error": exc.error.name,
+                "error": exc.error.name.lower(),
                 "error_description": exc.error_description,
             },
         ),
         status_code=status.HTTP_302_FOUND,
+    )
+
+
+@app.exception_handler(exceptions.EntityAlreadyExistsException)
+def handle_entity_already_exists_exception(
+    _: Request, exc: exceptions.EntityAlreadyExistsException
+):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"error": "bad_request", "error_description": "entity already exists"},
+    )
+
+
+@app.exception_handler(exceptions.EntityDoesNotExistException)
+def handle_entity_does_not_exist_exception(
+    _: Request, exc: exceptions.EntityDoesNotExistException
+):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"error": "bad_request", "error_description": "entity does not exist"},
     )

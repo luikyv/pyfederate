@@ -137,13 +137,11 @@ class ScopeUpsert(Scope):
 #################### API Models ####################
 
 
-@dataclass
 class ScopeIn(Scope):
     def to_upsert(self) -> ScopeUpsert:
         return ScopeUpsert(name=self.name, description=self.description)
 
 
-@dataclass
 class ScopeOut(Scope):
     pass
 
