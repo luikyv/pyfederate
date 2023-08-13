@@ -376,17 +376,12 @@ class AuthnStepFailureResult(AuthnStepResult):
     )
 
     def get_response(self, session: AuthnSession) -> Response:
-        return RedirectResponse(
-            url=tools.prepare_redirect_url(
-                url=session.redirect_uri,
-                params={
-                    "error": ErrorCode.ACCESS_DENIED.value,
-                    "error_description": self.error_description
-                    if self.error_description
-                    else "access denied",
-                },
-            ),
-            status_code=status.HTTP_302_FOUND,
+        raise exceptions.RedirectResponseException(
+            error=ErrorCode.ACCESS_DENIED,
+            error_description=self.error_description
+            if self.error_description
+            else "access denied",
+            redirect_uri=session.redirect_uri,
         )
 
 

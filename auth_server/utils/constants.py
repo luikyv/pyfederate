@@ -1,5 +1,6 @@
 from typing import Dict, Literal, Annotated
 from dataclasses import dataclass
+from fastapi import status
 from enum import Enum
 import logging
 import json
@@ -65,13 +66,12 @@ class ClientAuthnMethod(Enum):
 
 
 class ErrorCode(Enum):
-    ACCESS_DENIED = "access_denied"
-    INVALID_REQUEST = "invalid_request"
-    INVALID_CLIENT = "invalid_client"
-    INVALID_GRANT = "invalid_grant"
-    INVALID_SCOPE = "invalid_scope"
-    UNAUTHORIZED_CLIENT = "unauthorized_client"
-    SERVER_ERROR = "internal_server_error"
+    ACCESS_DENIED = status.HTTP_403_FORBIDDEN
+    INVALID_REQUEST = status.HTTP_400_BAD_REQUEST
+    INVALID_CLIENT = status.HTTP_400_BAD_REQUEST
+    INVALID_GRANT = status.HTTP_400_BAD_REQUEST
+    INVALID_SCOPE = status.HTTP_400_BAD_REQUEST
+    UNAUTHORIZED_CLIENT = status.HTTP_401_UNAUTHORIZED
 
 
 class AuthnStatus(Enum):

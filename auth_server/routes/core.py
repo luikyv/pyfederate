@@ -61,8 +61,7 @@ async def validation_exception_handler(request, exc):
 @app.exception_handler(exceptions.JsonResponseException)
 def handle_json_exception(_: Request, exc: exceptions.JsonResponseException):
     return JSONResponse(
-        # TODO: Map the errors to status codes
-        status_code=status.HTTP_400_BAD_REQUEST,
+        status_code=exc.error.value,
         content={"error": exc.error.value, "error_description": exc.error_description},
     )
 
@@ -73,7 +72,7 @@ def handle_redirect_exception(_: Request, exc: exceptions.RedirectResponseExcept
         url=tools.prepare_redirect_url(
             url=exc.redirect_uri,
             params={
-                "error": exc.error.value,
+                "error": exc.error.name,
                 "error_description": exc.error_description,
             },
         ),

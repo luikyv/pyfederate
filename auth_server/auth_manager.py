@@ -93,7 +93,7 @@ class AuthManager:
             )
         )
         if len(available_policies) == 0:
-            raise exceptions.NoAuthenticationPoliciesAvailableException()
+            raise RuntimeError("No authentication policy available")
 
         return available_policies[0]
 
