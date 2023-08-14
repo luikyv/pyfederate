@@ -174,6 +174,28 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "jinja2"
+version = "3.1.2"
+description = "A very fast and expressive template engine."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+MarkupSafe = ">=2.0"
+
+[package.extras]
+i18n = ["Babel (>=2.7)"]
+
+[[package]]
+name = "markupsafe"
+version = "2.1.3"
+description = "Safely add untrusted strings to HTML/XML markup."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "nodeenv"
 version = "1.8.0"
 description = "Node.js virtual environment builder"
@@ -474,7 +496,7 @@ test = ["covdefaults (>=2.3)", "coverage-enable-subprocess (>=1)", "coverage (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "f1e2e592526be74ff82b034040b2996a5709fe639c3dfd8abda40f2f5761a917"
+content-hash = "c51b8116f291a5790c5fcd71ab02747cab818bba3551ae69af75d91c662d90b8"
 
 [metadata.files]
 annotated-types = []
@@ -497,6 +519,8 @@ h11 = []
 identify = []
 idna = []
 iniconfig = []
+jinja2 = []
+markupsafe = []
 nodeenv = []
 packaging = []
 platformdirs = []

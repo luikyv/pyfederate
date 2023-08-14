@@ -88,11 +88,17 @@ async def setup_session_by_callback_id(
     set the tracking and correlation IDs using the session information
     """
 
-    session: schemas.AuthnSession = (
-        await manager.session_manager.get_session_by_callback_id(
-            callback_id=callback_id
+    try:
+        session: schemas.AuthnSession = (
+            await manager.session_manager.get_session_by_callback_id(
+                callback_id=callback_id
+            )
         )
-    )
+    except exceptions.EntityDoesNotExistException:
+        raise exceptions.JsonResponseException(
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid callback id",
+        )
     setup_telemetry(session=session)
     return session
 

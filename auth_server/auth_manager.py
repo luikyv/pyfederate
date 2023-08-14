@@ -114,7 +114,7 @@ class AuthManager:
             self.verify_signing_keys()
         ), "There are signing keys defined in the token models that are not available"
 
-    def setup_in_memory(self) -> None:
+    def setup_in_memory_env(self) -> None:
         self.token_model_manager = InMemoryTokenModelManager()
         self.scope_manager = InMemoryScopeManager()
         self.client_manager = InMemoryClientManager(
@@ -122,7 +122,7 @@ class AuthManager:
         )
         self.session_manager = InMemorySessionManager()
 
-    def setup_oltp(self, db_string: str) -> None:
+    def setup_oltp_env(self, db_string: str) -> None:
         engine = create_engine(
             "sqlite:///./sql_app.db", connect_args={"check_same_thread": False}
         )
