@@ -99,26 +99,30 @@ async def setup_mocked_env() -> None:
         )
     )
     await manager.scope_manager.create_scope(
+        scope=schemas.ScopeUpsert(name="profile", description="profile")
+    )
+    await manager.scope_manager.create_scope(
         scope=schemas.ScopeUpsert(name="photos", description="photos")
     )
     client = schemas.ClientUpsert(
-        id="my_client_12345678910",
+        id="test_client",
         authn_method=constants.ClientAuthnMethod.CLIENT_SECRET_POST,
-        redirect_uris=["http://localhost:8080/home"],
+        redirect_uris=["http://localhost:8080/callback"],
         response_types=[constants.ResponseType.CODE],
         grant_types=[
             constants.GrantType.CLIENT_CREDENTIALS,
             constants.GrantType.AUTHORIZATION_CODE,
             constants.GrantType.REFRESH_TOKEN,
         ],
-        scopes=["photos"],
+        scopes=["profile", "photos"],
         is_pkce_required=False,
         token_model_id="my_token_model",
     )
+    client.secret = "secret"
     client = await manager.client_manager.create_client(client=client)
     logger.info(f"{client}")
     logger.info(
-        f"http://localhost:8000/authorize?client_id={client.id}&redirect_uri={quote('http://localhost:8080/home')}&response_type=code&scope=photos&state=random"
+        f"http://localhost:8000/authorize?client_id={client.id}&redirect_uri={quote('http://localhost:8080/callback')}&response_type=code&scope=photos&state=random"
     )
 
 

@@ -14,6 +14,6 @@ COPY ./templates /code/templates
 COPY ./auth_server /code/auth_server
 COPY ./main.py /code/main.py
 
-EXPOSE 8000
+EXPOSE 80
 
 CMD ["poetry", "run", "python", "main.py"]
