@@ -88,9 +88,9 @@ if ENVIRONMENT == Environment.LOCAL:
 elif ENVIRONMENT == Environment.TEST:
     load_dotenv("tests/test.env")
 LOG_LEVEL = logging.getLevelName(os.environ.get("LOG_LEVEL", "DEBUG"))
-CLIENT_ID_MIN_LENGH = int(os.getenv("CLIENT_ID_MIN_LENGH", 20))
-CLIENT_ID_MAX_LENGH = int(os.getenv("CLIENT_ID_MAX_LENGH", 25))
-CLIENT_SECRET_MIN_LENGH = int(os.getenv("CLIENT_SECRET_MIN_LENGH", 45))
+CLIENT_ID_MIN_LENGH = int(os.getenv("CLIENT_ID_MIN_LENGH", 5))
+CLIENT_ID_MAX_LENGH = int(os.getenv("CLIENT_ID_MAX_LENGH", 50))
+CLIENT_SECRET_MIN_LENGH = int(os.getenv("CLIENT_SECRET_MIN_LENGH", 10))
 CLIENT_SECRET_MAX_LENGH = int(os.getenv("CLIENT_SECRET_MAX_LENGH", 50))
 CALLBACK_ID_LENGTH = int(os.getenv("CALLBACK_ID_LENGTH", 20))
 SESSION_ID_LENGTH = int(os.getenv("SESSION_ID_LENGTH", 20))

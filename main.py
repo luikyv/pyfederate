@@ -105,7 +105,7 @@ async def setup_mocked_env() -> None:
         scope=schemas.ScopeUpsert(name="photos", description="photos")
     )
     client = schemas.ClientUpsert(
-        id="test_client",
+        id="auth_client",
         authn_method=constants.ClientAuthnMethod.CLIENT_SECRET_POST,
         redirect_uris=["http://localhost:8080/callback"],
         response_types=[constants.ResponseType.CODE],
@@ -118,12 +118,12 @@ async def setup_mocked_env() -> None:
         is_pkce_required=False,
         token_model_id="my_token_model",
     )
-    client.secret = "secret"
+    client.secret = "secret_123456789"
     client = await manager.client_manager.create_client(client=client)
-    logger.info(f"{client}")
-    logger.info(
-        f"http://localhost:8000/authorize?client_id={client.id}&redirect_uri={quote('http://localhost:8080/callback')}&response_type=code&scope=photos&state=random"
-    )
+    # logger.info(f"{client}")
+    # logger.info(
+    #     f"http://localhost:8000/authorize?client_id={client.id}&redirect_uri={quote('http://localhost:8080/callback')}&response_type=code&scope=photos&state=random"
+    # )
 
 
 if __name__ == "__main__":
