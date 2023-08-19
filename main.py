@@ -6,7 +6,7 @@ import secrets
 from urllib.parse import quote
 import auth_server
 from auth_server.auth_manager import manager
-from auth_server.utils import schemas, constants, telemetry
+from auth_server.utils import schemas, constants, telemetry, tools
 
 
 CORRECT_PASSWORD = "password"
@@ -119,6 +119,7 @@ async def setup_mocked_env() -> None:
         token_model_id="my_token_model",
     )
     client.secret = "secret_123456789"
+    client.hashed_secret = tools.hash_secret(secret=client.secret)
     client = await manager.client_manager.create_client(client=client)
     # logger.info(f"{client}")
     # logger.info(
