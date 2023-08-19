@@ -56,7 +56,30 @@ async def get_password_step(
                 {
                     "request": request,
                     "callback_id": session.callback_id,
-                    "error": "senha inválida",
+                    "error": "Invalid password. Try typing password.",
+                },
+            )
+        )
+
+    return schemas.AuthnStepSuccessResult()
+
+
+async def get_confirmation_step(
+    session: schemas.AuthnSession,
+    request: Request,
+) -> schemas.AuthnStepResult:
+
+    form_data = await request.form()
+    confirm: str | None = form_data.get("confirm")  # type: ignore
+    if confirm is None:
+        return schemas.AuthnStepInProgressResult(
+            response=templates.TemplateResponse(
+                "confirmation.html",
+                {
+                    "request": request,
+                    "callback_id": session.callback_id,
+                    "client_id": session.client_id,
+                    "scopes": session.requested_scopes,
                 },
             )
         )
@@ -66,10 +89,17 @@ async def get_password_step(
 
 async def setup_mocked_env() -> None:
 
+    confirmation_authn_step = schemas.AuthnStep(
+        id="confirmation",
+        authn_func=get_confirmation_step,
+        success_next_step=None,
+        failure_next_step=None,
+    )
+
     password_authn_step = schemas.AuthnStep(
         id="password",
         authn_func=get_password_step,
-        success_next_step=None,
+        success_next_step=confirmation_authn_step,
         failure_next_step=None,
     )
 

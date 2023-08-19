@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 
 from . import oauth, management
 from ..utils import constants, telemetry, tools, exceptions
@@ -8,6 +9,7 @@ from ..utils import constants, telemetry, tools, exceptions
 logger = telemetry.get_logger(__name__)
 
 app = FastAPI()
+app.mount("/templates/static", StaticFiles(directory="templates/static"), name="static")
 app.include_router(oauth.router)
 app.include_router(management.router)
 
