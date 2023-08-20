@@ -114,3 +114,7 @@ def get_timestamp_now() -> int:
 def remove_oldest_item(d: Dict) -> None:
     first_key = next(iter(d))
     d.pop(first_key)
+
+
+def generate_request_uri() -> str:
+    return f"urn:ietf:params:oauth:request_uri:{generate_fixed_size_random_string(length=constants.REQUEST_URI_LENGTH)}"

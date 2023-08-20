@@ -12,6 +12,7 @@ HASHED_CLIENT_SECRET = "$2b$12$PXi6674c78E9KMYrmxLCOOVAi5Rlw7P.paqlQaye7CfuM3VdT
 TOKEN_EXPIRATION = 300
 SCOPES = ["scope1", "scope2"]
 REDIRECT_URI = "https://localhost:8080/callback"
+RESPONSE_TYPES = [constants.ResponseType.CODE]
 USER_ID = "user@email.com"
 TOKEN_ID = "token_id"
 TOKEN_MODEL_ID = "token_model_id"
@@ -28,6 +29,7 @@ timestamp_now: int = tools.get_timestamp_now()
 
 ######################################## Fixtures ########################################
 
+
 @pytest.fixture
 def token_info() -> schemas.TokenInfo:
     return schemas.TokenInfo(
@@ -38,7 +40,7 @@ def token_info() -> schemas.TokenInfo:
         client_id=CLIENT_ID,
         scopes=SCOPES,
         id=TOKEN_ID,
-        additional_info={}
+        additional_info={},
     )
 
 
@@ -51,7 +53,7 @@ def jwt_token_model() -> schemas.JWTTokenModel:
         is_refreshable=True,
         key_id=KEY_ID,
         key=HMAC_SIGNING_KEY,
-        signing_algorithm=constants.SigningAlgorithm.HS256
+        signing_algorithm=constants.SigningAlgorithm.HS256,
     )
 
 
@@ -65,12 +67,12 @@ def client(jwt_token_model: schemas.JWTTokenModel) -> schemas.Client:
         grant_types=[
             constants.GrantType.AUTHORIZATION_CODE,
             constants.GrantType.CLIENT_CREDENTIALS,
-            constants.GrantType.REFRESH_TOKEN
+            constants.GrantType.REFRESH_TOKEN,
         ],
         scopes=SCOPES,
         token_model=jwt_token_model,
         is_pkce_required=False,
-        hashed_secret=None
+        hashed_secret=None,
     )
 
 
@@ -87,7 +89,9 @@ def secret_authenticated_client(client: schemas.Client) -> schemas.Client:
 
 
 @pytest.fixture
-def client_credentials_grant_context(secret_authenticated_client: schemas.Client) -> schemas.GrantContext:
+def client_credentials_grant_context(
+    secret_authenticated_client: schemas.Client,
+) -> schemas.GrantContext:
     return schemas.GrantContext(
         grant_type=constants.GrantType.CLIENT_CREDENTIALS,
         client=secret_authenticated_client,
@@ -97,7 +101,7 @@ def client_credentials_grant_context(secret_authenticated_client: schemas.Client
         refresh_token=None,
         authz_code=None,
         code_verifier=None,
-        correlation_id=None
+        correlation_id=None,
     )
 
 
@@ -109,11 +113,13 @@ def authentication_session() -> schemas.AuthnSession:
         correlation_id="",
         client_id=CLIENT_ID,
         redirect_uri=REDIRECT_URI,
+        response_types=RESPONSE_TYPES,
         requested_scopes=SCOPES,
         state=STATE,
         auth_policy_id=AUTHENTICATION_POLICY_ID,
         next_authn_step_id="",
         user_id=USER_ID,
+        request_uri=None,
         authz_code=AUTHORIZATION_CODE,
         authz_code_creation_timestamp=timestamp_now,
         code_challenge=None,
@@ -121,7 +127,9 @@ def authentication_session() -> schemas.AuthnSession:
 
 
 @pytest.fixture
-def authorization_code_grant_context(secret_authenticated_client: schemas.Client) -> schemas.GrantContext:
+def authorization_code_grant_context(
+    secret_authenticated_client: schemas.Client,
+) -> schemas.GrantContext:
     return schemas.GrantContext(
         grant_type=constants.GrantType.AUTHORIZATION_CODE,
         client=secret_authenticated_client,
@@ -131,7 +139,7 @@ def authorization_code_grant_context(secret_authenticated_client: schemas.Client
         refresh_token=None,
         authz_code=AUTHORIZATION_CODE,
         code_verifier=None,
-        correlation_id=None
+        correlation_id=None,
     )
 
 
@@ -144,9 +152,9 @@ def autentication_policy() -> schemas.AuthnPolicy:
             id="first_step",
             authn_func=lambda session, request: schemas.AuthnStepSuccessResult(),
             success_next_step=None,
-            failure_next_step=None
+            failure_next_step=None,
         ),
-        get_extra_token_claims=None
+        get_extra_token_claims=None,
     )
 
 
@@ -162,6 +170,7 @@ def client_in() -> schemas.ClientIn:
         token_model_id=TOKEN_MODEL_ID,
         is_pkce_required=True,
     )
+
 
 ######################################## Helper Test Functions ########################################
 

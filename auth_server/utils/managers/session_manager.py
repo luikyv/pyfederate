@@ -61,6 +61,16 @@ class SessionManager(ABC):
         pass
 
     @abstractmethod
+    async def get_session_by_request_uri(
+        self, request_uri: str
+    ) -> schemas.AuthnSession:
+        """
+        Throws:
+            exceptions.SessionInfoDoesNotExist
+        """
+        pass
+
+    @abstractmethod
     async def get_token_session_by_id(self, token_id: str) -> schemas.TokenSession:
         """
         Throws:
@@ -159,6 +169,21 @@ class InMemorySessionManager(SessionManager):
         )
         if len(filtered_sessions) != 1:
             logger.info(f"The callback ID: {callback_id} has no associated session")
+            raise exceptions.EntityDoesNotExistException()
+
+        return filtered_sessions[0]
+
+    async def get_session_by_request_uri(
+        self, request_uri: str
+    ) -> schemas.AuthnSession:
+        filtered_sessions: typing.List[schemas.AuthnSession] = list(
+            filter(
+                lambda session: session.request_uri == request_uri,
+                self._sessions.values(),
+            )
+        )
+        if len(filtered_sessions) != 1:
+            logger.info(f"The request URI: {request_uri} has no associated session")
             raise exceptions.EntityDoesNotExistException()
 
         return filtered_sessions[0]

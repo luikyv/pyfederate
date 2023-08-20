@@ -295,6 +295,14 @@ class TokenResponse(BaseModel):
     scope: str | None = None
 
 
+#################### Pushed Authorization Request Endpoint ####################
+
+
+class PARResponse(BaseModel):
+    request_uri: str
+    expires_in: int
+
+
 #################### Authorization Endpoint ####################
 
 
@@ -318,6 +326,7 @@ class AuthnSession:
     correlation_id: str
     client_id: str
     redirect_uri: str
+    response_types: List[constants.ResponseType]
     requested_scopes: List[str]
     state: str
     auth_policy_id: str
@@ -326,6 +335,7 @@ class AuthnSession:
     authz_code: str | None
     authz_code_creation_timestamp: int | None
     code_challenge: str | None
+    request_uri: str | None
     params: Dict[str, Any] = field(default_factory=dict)
     id: str = field(default_factory=tools.generate_session_id)
 

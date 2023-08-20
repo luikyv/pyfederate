@@ -117,16 +117,36 @@ def get_scopes_as_form(
     return get_scopes(scope_string=scope)
 
 
-def get_scopes_as_query(
-    scope: Annotated[str, Query(description="Space separeted list of scopes")],
+def get_scopes_required_as_form(
+    scope: Annotated[str, Form(description="Space separeted list of scopes")]
 ) -> List[str]:
     return get_scopes(scope_string=scope)
 
 
-def get_response_types(
-    response_type: Annotated[str, Query()]
-) -> List[constants.ResponseType]:
+def get_scopes_as_query(
+    scope: Annotated[
+        str | None, Query(description="Space separeted list of scopes")
+    ] = None,
+) -> List[str]:
+    return get_scopes(scope_string=scope)
+
+
+def get_response_types(response_type: str | None) -> List[constants.ResponseType]:
+    if response_type is None or response_type == "":
+        return []
     return [constants.ResponseType(rt) for rt in response_type.split(" ")]
+
+
+def get_response_types_as_form(
+    response_type: Annotated[str, Form()]
+) -> List[constants.ResponseType]:
+    return get_response_types(response_type=response_type)
+
+
+def get_response_types_as_query(
+    response_type: Annotated[str | None, Query()] = None
+) -> List[constants.ResponseType]:
+    return get_response_types(response_type=response_type)
 
 
 ######################################## /token ########################################
@@ -408,34 +428,63 @@ grant_handlers: Dict[
 ######################################## /authorize ########################################
 
 
-def validate_authorization_request(authorize_context: schemas.AuthorizeContext) -> None:
-    if not authorize_context.client.are_scopes_allowed(
-        requested_scopes=authorize_context.requested_scopes
+def validate_authorization_request(
+    client: schemas.Client, authorize_session: schemas.AuthnSession
+) -> None:
+    if not client.are_scopes_allowed(
+        requested_scopes=authorize_session.requested_scopes
     ):
         raise exceptions.RedirectResponseException(
             error=constants.ErrorCode.INVALID_SCOPE,
             error_description="scope not allowed",
-            redirect_uri=authorize_context.redirect_uri,
+            redirect_uri=authorize_session.redirect_uri,
         )
 
-    if not authorize_context.client.are_response_types_allowed(
-        response_types=authorize_context.response_types
+    if not client.are_response_types_allowed(
+        response_types=authorize_session.response_types
     ):
         raise exceptions.RedirectResponseException(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="response type not allowed",
-            redirect_uri=authorize_context.redirect_uri,
+            redirect_uri=authorize_session.redirect_uri,
         )
 
-    if (
-        authorize_context.client.is_pkce_required
-        and authorize_context.code_challenge is None
-    ):
+    if client.is_pkce_required and authorize_session.code_challenge is None:
         raise exceptions.RedirectResponseException(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="pkce is required",
-            redirect_uri=authorize_context.redirect_uri,
+            redirect_uri=authorize_session.redirect_uri,
         )
+
+
+# def validate_authorization_request(authorize_context: schemas.AuthorizeContext) -> None:
+#     if not authorize_context.client.are_scopes_allowed(
+#         requested_scopes=authorize_context.requested_scopes
+#     ):
+#         raise exceptions.RedirectResponseException(
+#             error=constants.ErrorCode.INVALID_SCOPE,
+#             error_description="scope not allowed",
+#             redirect_uri=authorize_context.redirect_uri,
+#         )
+
+#     if not authorize_context.client.are_response_types_allowed(
+#         response_types=authorize_context.response_types
+#     ):
+#         raise exceptions.RedirectResponseException(
+#             error=constants.ErrorCode.INVALID_REQUEST,
+#             error_description="response type not allowed",
+#             redirect_uri=authorize_context.redirect_uri,
+#         )
+
+#     if (
+#         authorize_context.client.is_pkce_required
+#         and authorize_context.code_challenge is None
+#     ):
+#         raise exceptions.RedirectResponseException(
+#             error=constants.ErrorCode.INVALID_REQUEST,
+#             error_description="pkce is required",
+#             redirect_uri=authorize_context.redirect_uri,
+#         )
 
 
 ######################################## Authn Status Handlers ########################################

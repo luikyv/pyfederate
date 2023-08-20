@@ -3,7 +3,6 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 import secrets
 
-from urllib.parse import quote
 import auth_server
 from auth_server.auth_manager import manager
 from auth_server.utils import schemas, constants, telemetry, tools
@@ -151,10 +150,6 @@ async def setup_mocked_env() -> None:
     client.secret = "secret_123456789"
     client.hashed_secret = tools.hash_secret(secret=client.secret)
     client = await manager.client_manager.create_client(client=client)
-    # logger.info(f"{client}")
-    # logger.info(
-    #     f"http://localhost:8000/authorize?client_id={client.id}&redirect_uri={quote('http://localhost:8080/callback')}&response_type=code&scope=photos&state=random"
-    # )
 
 
 if __name__ == "__main__":
