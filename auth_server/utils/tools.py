@@ -1,4 +1,5 @@
 from typing import Dict
+from fastapi import Request
 from requests.models import PreparedRequest
 import secrets
 import string
@@ -118,3 +119,8 @@ def remove_oldest_item(d: Dict) -> None:
 
 def generate_request_uri() -> str:
     return f"urn:ietf:params:oauth:request_uri:{generate_fixed_size_random_string(length=constants.REQUEST_URI_LENGTH)}"
+
+
+async def get_form_as_dict(request: Request) -> Dict[str, str]:
+    form_data = await request.form()
+    return {item[0]: str(item[1]) for item in form_data.multi_items()}

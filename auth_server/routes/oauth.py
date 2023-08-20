@@ -58,6 +58,7 @@ async def get_token(
     description="Pushed Authorization Request endpoint",
 )
 async def push_authorization_request(
+    request: Request,
     client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
     response_types: Annotated[
         List[constants.ResponseType], Depends(helpers.get_scopes_required_as_form)
@@ -116,6 +117,7 @@ async def push_authorization_request(
         authz_code_creation_timestamp=None,
         code_challenge=code_challenge,
         request_uri=request_uri,
+        params=await tools.get_form_as_dict(request=request),
     )
     helpers.validate_authorization_request(client=client, authorize_session=session)
     await manager.session_manager.create_session(session=session)

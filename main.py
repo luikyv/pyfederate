@@ -20,7 +20,6 @@ async def get_identity_step(
 
     form_data = await request.form()
     user_id: str | None = form_data.get("username")  # type: ignore
-    logger.info(f"form = {form_data}")
     if user_id is None:
         return schemas.AuthnStepInProgressResult(
             response=templates.TemplateResponse(
