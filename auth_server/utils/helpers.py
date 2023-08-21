@@ -434,26 +434,23 @@ def validate_authorization_request(
     if not client.are_scopes_allowed(
         requested_scopes=authorize_session.requested_scopes
     ):
-        raise exceptions.RedirectResponseException(
+        raise exceptions.JsonResponseException(
             error=constants.ErrorCode.INVALID_SCOPE,
             error_description="scope not allowed",
-            redirect_uri=authorize_session.redirect_uri,
         )
 
     if not client.are_response_types_allowed(
         response_types=authorize_session.response_types
     ):
-        raise exceptions.RedirectResponseException(
+        raise exceptions.JsonResponseException(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="response type not allowed",
-            redirect_uri=authorize_session.redirect_uri,
         )
 
     if client.is_pkce_required and authorize_session.code_challenge is None:
-        raise exceptions.RedirectResponseException(
+        raise exceptions.JsonResponseException(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="pkce is required",
-            redirect_uri=authorize_session.redirect_uri,
         )
 
 

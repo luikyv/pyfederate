@@ -61,7 +61,7 @@ async def push_authorization_request(
     request: Request,
     client: Annotated[schemas.Client, Depends(helpers.get_authenticated_client)],
     response_types: Annotated[
-        List[constants.ResponseType], Depends(helpers.get_scopes_required_as_form)
+        List[constants.ResponseType], Depends(helpers.get_response_types_as_form)
     ],
     redirect_uri: Annotated[
         str,
@@ -69,7 +69,9 @@ async def push_authorization_request(
             description="URL to where the user will be redirected to once he is authenticated"
         ),
     ],
-    requested_scopes: Annotated[List[str], Depends(helpers.get_scopes_as_form)],
+    requested_scopes: Annotated[
+        List[str], Depends(helpers.get_scopes_required_as_form)
+    ],
     state: Annotated[
         str,
         Form(
@@ -89,7 +91,7 @@ async def push_authorization_request(
     ] = constants.CodeChallengeMethod.S256,
     request_uri: Annotated[
         str | None,
-        Query(description="Value generated during PAR"),
+        Form(description="Value generated during PAR"),
     ] = None,
     _: constants.CORRELATION_ID_HEADER_TYPE = None,
 ) -> schemas.PARResponse:
