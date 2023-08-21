@@ -103,6 +103,7 @@ REQUEST_URI_LENGTH = int(os.getenv("REQUEST_URI_LENGTH", 20))
 REQUEST_URI_TIMEOUT = int(os.getenv("REQUEST_URI_TIMEOUT", 60))
 SERVER_PORT = int(os.getenv("SERVER_PORT", 80))
 BEARER_TOKEN_TYPE = "Bearer"
+VERSION = os.getenv("VERSION", "0.1.0")
 
 
 @dataclass

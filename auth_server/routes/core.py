@@ -8,7 +8,7 @@ from ..utils import constants, telemetry, tools, exceptions
 
 logger = telemetry.get_logger(__name__)
 
-app = FastAPI()
+app = FastAPI(title="Custom Authorization Server", version=constants.VERSION)
 app.mount("/templates/static", StaticFiles(directory="templates/static"), name="static")
 app.include_router(oauth.router)
 app.include_router(management.router)
