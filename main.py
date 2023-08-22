@@ -4,13 +4,18 @@ from fastapi.templating import Jinja2Templates
 import secrets
 
 import auth_server
+import mocked_env
 from auth_server.auth_manager import manager
-from auth_server.utils import schemas, constants, telemetry, tools
+from auth_server.utils import schemas, telemetry
 
+######################################## Vars ########################################
 
 CORRECT_PASSWORD = "password"
 templates = Jinja2Templates(directory="templates")
 logger = telemetry.get_logger(__name__)
+
+
+######################################## Functions ########################################
 
 
 async def get_identity_step(
@@ -85,74 +90,41 @@ async def get_confirmation_step(
     return schemas.AuthnStepSuccessResult()
 
 
-async def setup_mocked_env() -> None:
+######################################## Policy ########################################
 
-    confirmation_authn_step = schemas.AuthnStep(
-        id="confirmation",
-        authn_func=get_confirmation_step,
-        success_next_step=None,
-        failure_next_step=None,
-    )
+confirmation_authn_step = schemas.AuthnStep(
+    id="confirmation",
+    authn_func=get_confirmation_step,
+    success_next_step=None,
+    failure_next_step=None,
+)
 
-    password_authn_step = schemas.AuthnStep(
-        id="password",
-        authn_func=get_password_step,
-        success_next_step=confirmation_authn_step,
-        failure_next_step=None,
-    )
+password_authn_step = schemas.AuthnStep(
+    id="password",
+    authn_func=get_password_step,
+    success_next_step=confirmation_authn_step,
+    failure_next_step=None,
+)
 
-    identity_authn_step = schemas.AuthnStep(
-        id="identity",
-        authn_func=get_identity_step,
-        success_next_step=password_authn_step,
-        failure_next_step=None,
-    )
+identity_authn_step = schemas.AuthnStep(
+    id="identity",
+    authn_func=get_identity_step,
+    success_next_step=password_authn_step,
+    failure_next_step=None,
+)
 
-    my_policy = schemas.AuthnPolicy(
-        id="my_policy",
-        is_available=lambda client, request: True,
-        first_step=identity_authn_step,
-        get_extra_token_claims=lambda session: {"new_claim": "my_new_claim"},
-    )
-    manager.register_authn_policy(authn_policy=my_policy)
+my_policy = schemas.AuthnPolicy(
+    id="my_policy",
+    is_available=lambda client, request: True,
+    first_step=identity_authn_step,
+    get_extra_token_claims=lambda session: {"new_claim": "my_new_claim"},
+)
 
-    await manager.token_model_manager.create_token_model(
-        token_model=schemas.TokenModelUpsert(
-            id="my_token_model",
-            issuer="my_company",
-            expires_in=300,
-            token_type=constants.TokenType.JWT,
-            key_id="my_key",
-            is_refreshable=True,
-        )
-    )
-    await manager.scope_manager.create_scope(
-        scope=schemas.ScopeUpsert(name="profile", description="profile")
-    )
-    await manager.scope_manager.create_scope(
-        scope=schemas.ScopeUpsert(name="photos", description="photos")
-    )
-    client = schemas.ClientUpsert(
-        id="auth_client",
-        authn_method=constants.ClientAuthnMethod.CLIENT_SECRET_POST,
-        redirect_uris=["http://localhost:8080/callback"],
-        response_types=[constants.ResponseType.CODE],
-        grant_types=[
-            constants.GrantType.CLIENT_CREDENTIALS,
-            constants.GrantType.AUTHORIZATION_CODE,
-            constants.GrantType.REFRESH_TOKEN,
-        ],
-        scopes=["profile", "photos"],
-        is_pkce_required=False,
-        token_model_id="my_token_model",
-    )
-    client.secret = "secret_123456789"
-    client.hashed_secret = tools.hash_secret(secret=client.secret)
-    client = await manager.client_manager.create_client(client=client)
-
+######################################## Main ########################################
 
 if __name__ == "__main__":
 
     manager.setup_in_memory_env()
-    asyncio.run(setup_mocked_env())
+    manager.register_authn_policy(authn_policy=my_policy)
+    asyncio.run(mocked_env.setup_mocked_env())
     auth_server.run()

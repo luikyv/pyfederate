@@ -431,6 +431,12 @@ grant_handlers: Dict[
 def validate_authorization_request(
     client: schemas.Client, authorize_session: schemas.AuthnSession
 ) -> None:
+    if not client.owns_redirect_uri(redirect_uri=authorize_session.redirect_uri):
+        raise exceptions.JsonResponseException(
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid redirect_uri",
+        )
+
     if not client.are_scopes_allowed(
         requested_scopes=authorize_session.requested_scopes
     ):

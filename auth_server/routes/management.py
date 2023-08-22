@@ -39,7 +39,7 @@ def validate_credentials(
 
 
 @router.post(
-    "/token_model",
+    "/token-model",
     status_code=status.HTTP_201_CREATED,
 )
 async def create_token_model(
@@ -55,20 +55,20 @@ async def create_token_model(
 
 
 @router.get(
-    "/token_model/{token_model_id}",
+    "/token-model/{id}",
     status_code=status.HTTP_200_OK,
 )
 async def get_token_model(
-    token_model_id: str, _: Annotated[None, Depends(validate_credentials)]
+    id: str, _: Annotated[None, Depends(validate_credentials)]
 ) -> schemas.TokenModelOut:
     token_model: schemas.TokenModel = await manager.token_model_manager.get_token_model(
-        token_model_id=token_model_id
+        token_model_id=id
     )
     return token_model.to_output()
 
 
 @router.get(
-    "/token_models",
+    "/token-models",
     status_code=status.HTTP_200_OK,
 )
 async def get_token_models(
@@ -81,13 +81,13 @@ async def get_token_models(
 
 
 @router.delete(
-    "/token_model/{token_model_id}",
+    "/token-model/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_token_model(
-    token_model_id: str, _: Annotated[None, Depends(validate_credentials)]
+    id: str, _: Annotated[None, Depends(validate_credentials)]
 ) -> None:
-    await manager.token_model_manager.delete_token_model(token_model_id=token_model_id)
+    await manager.token_model_manager.delete_token_model(token_model_id=id)
 
 
 #################### Scope ####################
@@ -104,13 +104,13 @@ async def create_scope(
 
 
 @router.get(
-    "/scope/{scope_name}",
+    "/scope/{name}",
     status_code=status.HTTP_200_OK,
 )
 async def get_scope(
-    scope_name: str, _: Annotated[None, Depends(validate_credentials)]
+    name: str, _: Annotated[None, Depends(validate_credentials)]
 ) -> schemas.ScopeOut:
-    scope: schemas.Scope = await manager.scope_manager.get_scope(scope_name=scope_name)
+    scope: schemas.Scope = await manager.scope_manager.get_scope(scope_name=name)
     return scope.to_output()
 
 
@@ -153,15 +153,13 @@ async def create_client(
 
 
 @router.get(
-    "/client/{client_id}",
+    "/client/{id}",
     status_code=status.HTTP_200_OK,
     response_model=schemas.ClientOut,
     response_model_exclude_none=True,
 )
-async def get_client(client_id: str, _: Annotated[None, Depends(validate_credentials)]):
-    client: schemas.Client = await manager.client_manager.get_client(
-        client_id=client_id
-    )
+async def get_client(id: str, _: Annotated[None, Depends(validate_credentials)]):
+    client: schemas.Client = await manager.client_manager.get_client(client_id=id)
     return client.to_output()
 
 
