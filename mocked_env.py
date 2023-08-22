@@ -49,10 +49,11 @@ async def setup_mocked_env() -> None:
     await manager.scope_manager.create_scope(
         scope=schemas.ScopeUpsert(name="photos", description="photos")
     )
+    app_domain = os.getenv("APP_DOMAIN", f"http://localhost:{constants.SERVER_PORT}")
     client = schemas.ClientUpsert(
         id="auth_client",
         authn_method=constants.ClientAuthnMethod.CLIENT_SECRET_POST,
-        redirect_uris=[f"{os.getenv('APP_DOMAIN', 5)}/callback"],
+        redirect_uris=[f"{app_domain}/callback"],
         response_types=[constants.ResponseType.CODE],
         grant_types=[
             constants.GrantType.CLIENT_CREDENTIALS,
