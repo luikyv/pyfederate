@@ -92,37 +92,37 @@ async def get_confirmation_step(
 
 ######################################## Policy ########################################
 
-confirmation_authn_step = schemas.AuthnStep(
-    id="confirmation",
-    authn_func=get_confirmation_step,
-    success_next_step=None,
-    failure_next_step=None,
-)
-
-password_authn_step = schemas.AuthnStep(
-    id="password",
-    authn_func=get_password_step,
-    success_next_step=confirmation_authn_step,
-    failure_next_step=None,
-)
-
-identity_authn_step = schemas.AuthnStep(
-    id="identity",
-    authn_func=get_identity_step,
-    success_next_step=password_authn_step,
-    failure_next_step=None,
-)
-
-my_policy = schemas.AuthnPolicy(
-    id="my_policy",
-    is_available=lambda client, request: True,
-    first_step=identity_authn_step,
-    get_extra_token_claims=lambda session: {"new_claim": "my_new_claim"},
-)
-
 ######################################## Main ########################################
 
 if __name__ == "__main__":
+
+    confirmation_authn_step = schemas.AuthnStep(
+        id="confirmation",
+        authn_func=get_confirmation_step,
+        success_next_step=None,
+        failure_next_step=None,
+    )
+
+    password_authn_step = schemas.AuthnStep(
+        id="password",
+        authn_func=get_password_step,
+        success_next_step=confirmation_authn_step,
+        failure_next_step=None,
+    )
+
+    identity_authn_step = schemas.AuthnStep(
+        id="identity",
+        authn_func=get_identity_step,
+        success_next_step=password_authn_step,
+        failure_next_step=None,
+    )
+
+    my_policy = schemas.AuthnPolicy(
+        id="my_policy",
+        is_available=lambda client, request: True,
+        first_step=identity_authn_step,
+        get_extra_token_claims=lambda session: {"new_claim": "my_new_claim"},
+    )
 
     manager.setup_in_memory_env()
     manager.register_authn_policy(authn_policy=my_policy)

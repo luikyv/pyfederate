@@ -13,6 +13,7 @@ RUN poetry install --no-dev
 COPY ./templates /code/templates
 COPY ./auth_server /code/auth_server
 COPY ./main.py /code/main.py
+COPY ./mocked_env.py /code/mocked_env.py
 
 EXPOSE 80
 
