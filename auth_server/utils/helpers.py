@@ -1,6 +1,7 @@
 from typing import Annotated, Awaitable, Callable, Dict, List
 from fastapi import Form, Query, Path, Request, Response
 import inspect
+from datetime import datetime, timedelta
 
 from ..utils import constants, telemetry, schemas, tools, exceptions
 from .constants import GrantType, AuthnStatus
@@ -247,6 +248,7 @@ async def create_token_session(
         client_id=authz_code_context.client.id,
         token_model_id=authz_code_context.token_model.id,
         token_info=token_info,
+        created_at=datetime.now(),
     )
     await manager.session_manager.create_token_session(session=token_session)
     return token_session
@@ -365,6 +367,12 @@ def validate_refresh_token_grant(
             error_description=f"grant type not allowed",
         )
 
+    if grant_context.refresh_token is None:
+        raise exceptions.JsonResponseException(
+            error=constants.ErrorCode.INVALID_GRANT,
+            error_description=f"invalid refresh token",
+        )
+
 
 async def update_token_session(
     token_session: schemas.TokenSession, token_model: schemas.TokenModel
@@ -384,17 +392,10 @@ async def refresh_token_handler(
 ) -> schemas.TokenResponse:
 
     validate_refresh_token_grant(grant_context=grant_context)
-    if grant_context.refresh_token is None:
-        raise exceptions.JsonResponseException(
-            error=constants.ErrorCode.INVALID_GRANT,
-            error_description=f"invalid refresh token",
-        )
-
     try:
-        token_session: schemas.TokenSession = (
-            await manager.session_manager.get_token_session_by_refresh_token(
-                refresh_token=grant_context.refresh_token
-            )
+        token_session: schemas.TokenSession = await manager.session_manager.get_token_session_by_refresh_token(
+            # The refresh token existence was validated by validate_refresh_token_grant.
+            refresh_token=grant_context.refresh_token  # type: ignore
         )
     except exceptions.EntityDoesNotExistException:
         raise exceptions.JsonResponseException(
@@ -405,6 +406,18 @@ async def refresh_token_handler(
     token_model: schemas.TokenModel = await manager.token_model_manager.get_token_model(
         token_model_id=token_session.token_model_id
     )
+    if (
+        token_session.created_at + timedelta(seconds=token_model.refresh_lifetime_secs)
+        > datetime.now()
+    ):
+        await manager.session_manager.delete_token_session(
+            session_id=token_session.token_id
+        )
+        raise exceptions.JsonResponseException(
+            error=constants.ErrorCode.INVALID_GRANT,
+            error_description=f"the refresh token expired",
+        )
+
     await update_token_session(token_session=token_session, token_model=token_model)
     return schemas.TokenResponse(
         access_token=token_model.generate_token(
@@ -440,7 +453,7 @@ def validate_authorization_request(
     if not client.are_scopes_allowed(
         requested_scopes=authorize_session.requested_scopes
     ):
-        raise exceptions.JsonResponseException(
+        raise exceptions.AuthnException(
             error=constants.ErrorCode.INVALID_SCOPE,
             error_description="scope not allowed",
         )
@@ -448,46 +461,16 @@ def validate_authorization_request(
     if not client.are_response_types_allowed(
         response_types=authorize_session.response_types
     ):
-        raise exceptions.JsonResponseException(
+        raise exceptions.AuthnException(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="response type not allowed",
         )
 
     if client.is_pkce_required and authorize_session.code_challenge is None:
-        raise exceptions.JsonResponseException(
+        raise exceptions.AuthnException(
             error=constants.ErrorCode.INVALID_REQUEST,
             error_description="pkce is required",
         )
-
-
-# def validate_authorization_request(authorize_context: schemas.AuthorizeContext) -> None:
-#     if not authorize_context.client.are_scopes_allowed(
-#         requested_scopes=authorize_context.requested_scopes
-#     ):
-#         raise exceptions.RedirectResponseException(
-#             error=constants.ErrorCode.INVALID_SCOPE,
-#             error_description="scope not allowed",
-#             redirect_uri=authorize_context.redirect_uri,
-#         )
-
-#     if not authorize_context.client.are_response_types_allowed(
-#         response_types=authorize_context.response_types
-#     ):
-#         raise exceptions.RedirectResponseException(
-#             error=constants.ErrorCode.INVALID_REQUEST,
-#             error_description="response type not allowed",
-#             redirect_uri=authorize_context.redirect_uri,
-#         )
-
-#     if (
-#         authorize_context.client.is_pkce_required
-#         and authorize_context.code_challenge is None
-#     ):
-#         raise exceptions.RedirectResponseException(
-#             error=constants.ErrorCode.INVALID_REQUEST,
-#             error_description="pkce is required",
-#             redirect_uri=authorize_context.redirect_uri,
-#         )
 
 
 ######################################## Authn Status Handlers ########################################

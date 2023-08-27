@@ -112,7 +112,7 @@ async def push_authorization_request(
         redirect_uri=redirect_uri,
         response_types=response_types,
         state=state,
-        auth_policy_id="",  # It will be overwritten during /authorize
+        auth_policy_id="",  # It will be overwritten during /authorize.
         next_authn_step_id=schemas.default_failure_step.id,
         requested_scopes=requested_scopes,
         authz_code=None,
@@ -121,7 +121,15 @@ async def push_authorization_request(
         request_uri=request_uri,
         params=await tools.get_form_as_dict(request=request),
     )
-    helpers.validate_authorization_request(client=client, authorize_session=session)
+
+    try:
+        helpers.validate_authorization_request(client=client, authorize_session=session)
+    except exceptions.AuthnException as e:
+        raise exceptions.JsonResponseException(
+            error=e.error,
+            error_description=e.error_description,
+        )
+
     await manager.session_manager.create_session(session=session)
 
     return schemas.PARResponse(
@@ -172,14 +180,16 @@ async def authorize(
     )
     logger.info(f"Policy with ID: {authn_policy.id} retrieved for execution")
 
-    # Check if an authn has already been created using PAR
+    # Check if an authn has already been created using PAR.
     if request_uri:
+        # Fetch the session. It was already validated during /par.
         session = await manager.session_manager.get_session_by_request_uri(
             request_uri=request_uri
         )
         session.auth_policy_id = authn_policy.id
         session.next_authn_step_id = authn_policy.first_step.id
     else:
+        # If the request uri is None, the authorize params must be provided.
         if not redirect_uri or not response_types or not state or not requested_scopes:
             raise exceptions.JsonResponseException(
                 error=constants.ErrorCode.INVALID_REQUEST,
@@ -203,7 +213,17 @@ async def authorize(
             code_challenge=code_challenge,
             request_uri=None,
         )
-        helpers.validate_authorization_request(client=client, authorize_session=session)
+        try:
+            helpers.validate_authorization_request(
+                client=client, authorize_session=session
+            )
+        except exceptions.AuthnException as e:
+            raise exceptions.RedirectResponseException(
+                error=e.error,
+                error_description=e.error_description,
+                redirect_uri=redirect_uri,
+                state=state,
+            )
         await manager.session_manager.create_session(session=session)
 
     return await helpers.manage_authentication(session, request)

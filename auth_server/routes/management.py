@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Depends
+from fastapi import Path, APIRouter, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 
@@ -59,10 +59,11 @@ async def create_token_model(
     status_code=status.HTTP_200_OK,
 )
 async def get_token_model(
-    id: str, _: Annotated[None, Depends(validate_credentials)]
+    token_model_id: Annotated[str, Path(alias="id")],
+    _: Annotated[None, Depends(validate_credentials)],
 ) -> schemas.TokenModelOut:
     token_model: schemas.TokenModel = await manager.token_model_manager.get_token_model(
-        token_model_id=id
+        token_model_id=token_model_id
     )
     return token_model.to_output()
 
@@ -85,9 +86,10 @@ async def get_token_models(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_token_model(
-    id: str, _: Annotated[None, Depends(validate_credentials)]
+    token_model_id: Annotated[str, Path(alias="id")],
+    _: Annotated[None, Depends(validate_credentials)],
 ) -> None:
-    await manager.token_model_manager.delete_token_model(token_model_id=id)
+    await manager.token_model_manager.delete_token_model(token_model_id=token_model_id)
 
 
 #################### Scope ####################
@@ -126,13 +128,13 @@ async def get_scopes(
 
 
 @router.delete(
-    "/scope/{scope_name}",
+    "/scope/{name}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_client(
-    scope_name: str, _: Annotated[None, Depends(validate_credentials)]
+    name: str, _: Annotated[None, Depends(validate_credentials)]
 ) -> None:
-    await manager.scope_manager.delete_scope(scope_name=scope_name)
+    await manager.scope_manager.delete_scope(scope_name=name)
 
 
 #################### Client ####################
@@ -158,8 +160,13 @@ async def create_client(
     response_model=schemas.ClientOut,
     response_model_exclude_none=True,
 )
-async def get_client(id: str, _: Annotated[None, Depends(validate_credentials)]):
-    client: schemas.Client = await manager.client_manager.get_client(client_id=id)
+async def get_client(
+    client_id: Annotated[str, Path(alias="id")],
+    _: Annotated[None, Depends(validate_credentials)],
+):
+    client: schemas.Client = await manager.client_manager.get_client(
+        client_id=client_id
+    )
     return client.to_output()
 
 

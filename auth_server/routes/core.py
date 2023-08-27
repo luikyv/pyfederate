@@ -73,13 +73,18 @@ def handle_json_exception(_: Request, exc: exceptions.JsonResponseException):
 
 @app.exception_handler(exceptions.RedirectResponseException)
 def handle_redirect_exception(_: Request, exc: exceptions.RedirectResponseException):
+
+    redirect_params = {
+        "error": exc.error.name.lower(),
+        "error_description": exc.error_description,
+    }
+    if exc.state:
+        redirect_params["state"] = exc.state
+
     return RedirectResponse(
         url=tools.prepare_redirect_url(
             url=exc.redirect_uri,
-            params={
-                "error": exc.error.name.lower(),
-                "error_description": exc.error_description,
-            },
+            params=redirect_params,
         ),
         status_code=status.HTTP_302_FOUND,
     )

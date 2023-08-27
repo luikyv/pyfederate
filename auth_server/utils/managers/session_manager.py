@@ -14,7 +14,7 @@ class SessionManager(ABC):
     async def create_session(self, session: schemas.AuthnSession) -> None:
         """
         Throws:
-            exceptions.SessionInfoAlreadyExists
+            exceptions.EntityAlreadyExists
         """
         pass
 
@@ -22,7 +22,7 @@ class SessionManager(ABC):
     async def create_token_session(self, session: schemas.TokenSession) -> None:
         """
         Throws:
-            exceptions.TokenSessionAlreadyExists
+            exceptions.EntityAlreadyExists
         """
         pass
 
@@ -30,7 +30,7 @@ class SessionManager(ABC):
     async def update_session(self, session: schemas.AuthnSession) -> None:
         """
         Throws:
-            exceptions.SessionInfoDoesNotExist
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -38,7 +38,7 @@ class SessionManager(ABC):
     async def update_token_session(self, session: schemas.TokenSession) -> None:
         """
         Throws:
-            exceptions.TokenSessionDoesNotExist
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -46,7 +46,7 @@ class SessionManager(ABC):
     async def get_session_by_authz_code(self, authz_code: str) -> schemas.AuthnSession:
         """
         Throws:
-            exceptions.SessionInfoDoesNotExist
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -56,7 +56,7 @@ class SessionManager(ABC):
     ) -> schemas.AuthnSession:
         """
         Throws:
-            exceptions.SessionInfoDoesNotExist
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -66,7 +66,7 @@ class SessionManager(ABC):
     ) -> schemas.AuthnSession:
         """
         Throws:
-            exceptions.SessionInfoDoesNotExist
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -74,7 +74,7 @@ class SessionManager(ABC):
     async def get_token_session_by_id(self, token_id: str) -> schemas.TokenSession:
         """
         Throws:
-            exceptions.TokenSessionDoesNotExist
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -84,7 +84,7 @@ class SessionManager(ABC):
     ) -> schemas.TokenSession:
         """
         Throws:
-            exceptions.TokenSessionDoesNotExist
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -92,7 +92,15 @@ class SessionManager(ABC):
     async def delete_session(self, session_id: str) -> None:
         """
         Throws:
-            exceptions.SessionInfoDoesNotExist
+            exceptions.EntityDoesNotExist
+        """
+        pass
+
+    @abstractmethod
+    async def delete_token_session(self, session_id: str) -> None:
+        """
+        Throws:
+            exceptions.EntityDoesNotExist
         """
         pass
 
@@ -212,3 +220,6 @@ class InMemorySessionManager(SessionManager):
 
     async def delete_session(self, session_id: str) -> None:
         self._sessions.pop(session_id)
+
+    async def delete_token_session(self, session_id: str) -> None:
+        self._token_sessions.pop(session_id)

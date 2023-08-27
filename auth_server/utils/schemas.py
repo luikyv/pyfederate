@@ -4,6 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from typing import Any, List, Dict, Optional, Callable, Awaitable
 import bcrypt
 import jwt
+from datetime import datetime
 from abc import ABC, abstractmethod
 from fastapi import Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -46,6 +47,7 @@ class BaseTokenModel(BaseModel):
     issuer: str
     expires_in: int
     is_refreshable: bool
+    refresh_lifetime_secs: int = Field(default=0)
 
 
 class TokenModel(BaseTokenModel, ABC):
@@ -347,6 +349,7 @@ class TokenSession:
     client_id: str
     token_model_id: str
     token_info: TokenInfo
+    created_at: datetime
 
 
 ######################################## Auth Policy ########################################
@@ -390,6 +393,7 @@ class AuthnStepFailureResult(AuthnStepResult):
             if self.error_description
             else "access denied",
             redirect_uri=session.redirect_uri,
+            state=session.state,
         )
 
 

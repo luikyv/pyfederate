@@ -19,9 +19,14 @@ class JsonResponseException(AuthnException):
 
 class RedirectResponseException(AuthnException):
     def __init__(
-        self, error: constants.ErrorCode, error_description: str, redirect_uri: str
+        self,
+        error: constants.ErrorCode,
+        error_description: str,
+        redirect_uri: str,
+        state: str | None,
     ) -> None:
         self.redirect_uri = redirect_uri
+        self.state = state
         super().__init__(error, error_description)
 
 
