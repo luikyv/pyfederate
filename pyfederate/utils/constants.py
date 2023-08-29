@@ -82,10 +82,8 @@ class AuthnStatus(Enum):
 
 
 ########## Configurations ##########
-ENVIRONMENT = Environment(os.getenv("ENVIRONMENT", "LOCAL"))
-if ENVIRONMENT == Environment.LOCAL:
-    load_dotenv()
-elif ENVIRONMENT == Environment.TEST:
+ENVIRONMENT = Environment(os.getenv("ENVIRONMENT", "TEST"))
+if ENVIRONMENT == Environment.TEST:
     load_dotenv("tests/test.env")
 LOG_LEVEL = logging.getLevelName(os.environ.get("LOG_LEVEL", "DEBUG"))
 CLIENT_ID_MIN_LENGH = int(os.getenv("CLIENT_ID_MIN_LENGH", 5))
