@@ -4,7 +4,7 @@ import pytest
 from fastapi.exceptions import RequestValidationError
 
 from tests import conftest
-from auth_server.utils import schemas, constants, exceptions
+from pyfederate.utils import schemas, constants, exceptions
 
 
 @pytest.fixture

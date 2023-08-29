@@ -7,12 +7,10 @@ from datetime import datetime
 from . import constants
 
 tracking_id: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "tracking_id",
-    default=str(uuid.UUID('00000000-0000-0000-0000-000000000000'))
+    "tracking_id", default=str(uuid.UUID("00000000-0000-0000-0000-000000000000"))
 )
 correlation_id: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "correlation_id",
-    default=str(uuid.UUID('00000000-0000-0000-0000-000000000000'))
+    "correlation_id", default=str(uuid.UUID("00000000-0000-0000-0000-000000000000"))
 )
 
 

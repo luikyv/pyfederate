@@ -1,7 +1,7 @@
 from typing import TypeVar
 import pytest
 
-from auth_server.utils import schemas, tools, constants
+from pyfederate.utils import schemas, tools, constants
 
 ######################################## Constants ########################################
 

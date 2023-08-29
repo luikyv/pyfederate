@@ -496,7 +496,7 @@ test = ["covdefaults (>=2.3)", "coverage-enable-subprocess (>=1)", "coverage (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "c51b8116f291a5790c5fcd71ab02747cab818bba3551ae69af75d91c662d90b8"
+content-hash = "204d2bfb38523ac28cb977520f22e8f2af8b9593a9e6e2d29243c3648a272721"
 
 [metadata.files]
 annotated-types = []

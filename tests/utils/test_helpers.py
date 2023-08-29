@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch, MagicMock
 import jwt
 
 from tests import conftest
-from auth_server.utils import constants, schemas, helpers, exceptions
+from pyfederate.utils import constants, schemas, helpers, exceptions
 
 #################### Test helpers.get_authenticated_client ####################
 

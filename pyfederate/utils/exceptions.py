@@ -1,4 +1,4 @@
-from auth_server.utils import constants
+from pyfederate.utils import constants
 from . import constants
 
 ######################################## Exceptions ########################################
