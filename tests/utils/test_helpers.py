@@ -10,7 +10,7 @@ from pyfederate.utils import constants, schemas, helpers, exceptions
 
 
 @pytest.mark.asyncio
-@patch("auth_server.utils.helpers.manager")
+@patch("pyfederate.utils.helpers.manager")
 async def test_get_authenticated_client_without_authentication(
     mocked_manager: MagicMock, no_authentication_client: schemas.Client
 ) -> None:
@@ -29,7 +29,7 @@ async def test_get_authenticated_client_without_authentication(
 
 
 @pytest.mark.asyncio
-@patch("auth_server.utils.helpers.manager")
+@patch("pyfederate.utils.helpers.manager")
 async def test_get_authenticated_client_no_secret_provided(
     mocked_manager: MagicMock,
     secret_authenticated_client: schemas.Client,
@@ -51,7 +51,7 @@ async def test_get_authenticated_client_no_secret_provided(
 
 
 @pytest.mark.asyncio
-@patch("auth_server.utils.helpers.manager")
+@patch("pyfederate.utils.helpers.manager")
 async def test_get_authenticated_client_invalid_secret(
     mocked_manager: MagicMock, secret_authenticated_client: schemas.Client
 ) -> None:
@@ -72,7 +72,7 @@ async def test_get_authenticated_client_invalid_secret(
 
 
 @pytest.mark.asyncio
-@patch("auth_server.utils.helpers.manager")
+@patch("pyfederate.utils.helpers.manager")
 async def test_get_authenticated_client_valid_secret(
     mocked_manager: MagicMock, secret_authenticated_client: schemas.Client
 ) -> None:
@@ -171,7 +171,7 @@ async def test_client_credentials_token_handler_generate_jwt_token(
 
 
 @pytest.mark.asyncio
-@patch("auth_server.utils.helpers.manager")
+@patch("pyfederate.utils.helpers.manager")
 async def test_create_token_session(
     mocked_manager: MagicMock,
     authorization_code_grant_context: schemas.GrantContext,
@@ -208,7 +208,7 @@ async def test_authorization_code_token_handler_no_code_provided(
 
 
 @pytest.mark.asyncio
-@patch("auth_server.utils.helpers.manager")
+@patch("pyfederate.utils.helpers.manager")
 async def test_authorization_code_token_handler_jwt_response(
     mocked_manager: MagicMock,
     authorization_code_grant_context: schemas.GrantContext,
