@@ -151,6 +151,19 @@ class ScopeOut(Scope):
 ######################################## Client ########################################
 
 
+class AuthnMethod(BaseModel):
+    pass
+
+
+class SecretAuthnMethod(AuthnMethod):
+    secret: str
+
+
+class PrivateKeyJWTAuthnMethod(AuthnMethod):
+    key: str
+    signing_alg: str
+
+
 class ClientBase(BaseModel):
     id: str
     authn_method: constants.ClientAuthnMethod
