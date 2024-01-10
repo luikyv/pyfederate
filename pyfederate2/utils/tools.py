@@ -13,7 +13,18 @@ import json
 import time
 import functools
 
-from . import constants
+from .configs import (
+    CLIENT_ID_MIN_LENGH,
+    CLIENT_ID_MAX_LENGH,
+    CLIENT_SECRET_MIN_LENGH,
+    CLIENT_SECRET_MAX_LENGH,
+    CALLBACK_ID_LENGTH,
+    AUTHORIZATION_CODE_LENGTH,
+    SESSION_ID_LENGTH,
+    REFRESH_TOKEN_LENGTH,
+    SECRET_ENCODING,
+    REQUEST_URI_LENGTH,
+)
 
 alphabet = string.ascii_letters + string.digits
 
@@ -46,37 +57,33 @@ def generate_random_string(min_length: int, max_length: int) -> str:
 
 
 def generate_client_id() -> str:
-    return generate_random_string(
-        constants.CLIENT_ID_MIN_LENGH, constants.CLIENT_ID_MAX_LENGH
-    )
+    return generate_random_string(CLIENT_ID_MIN_LENGH, CLIENT_ID_MAX_LENGH)
 
 
 def generate_client_secret() -> str:
-    return generate_random_string(
-        constants.CLIENT_SECRET_MIN_LENGH, constants.CLIENT_SECRET_MAX_LENGH
-    )
+    return generate_random_string(CLIENT_SECRET_MIN_LENGH, CLIENT_SECRET_MAX_LENGH)
 
 
 def generate_callback_id() -> str:
-    return generate_fixed_size_random_string(constants.CALLBACK_ID_LENGTH)
+    return generate_fixed_size_random_string(CALLBACK_ID_LENGTH)
 
 
 def generate_authz_code() -> str:
-    return generate_fixed_size_random_string(constants.AUTHORIZATION_CODE_LENGTH)
+    return generate_fixed_size_random_string(AUTHORIZATION_CODE_LENGTH)
 
 
 def generate_session_id() -> str:
-    return generate_fixed_size_random_string(constants.SESSION_ID_LENGTH)
+    return generate_fixed_size_random_string(SESSION_ID_LENGTH)
 
 
 def generate_refresh_token() -> str:
-    return generate_fixed_size_random_string(constants.REFRESH_TOKEN_LENGTH)
+    return generate_fixed_size_random_string(REFRESH_TOKEN_LENGTH)
 
 
 def hash_secret(secret: str) -> str:
-    return bcrypt.hashpw(
-        secret.encode(constants.SECRET_ENCODING), bcrypt.gensalt()
-    ).decode(constants.SECRET_ENCODING)
+    return bcrypt.hashpw(secret.encode(SECRET_ENCODING), bcrypt.gensalt()).decode(
+        SECRET_ENCODING
+    )
 
 
 def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
@@ -89,23 +96,21 @@ def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
 
 def is_pkce_valid(code_verifier: str, code_challenge: str) -> bool:
     hashed_code_verifier = (
-        base64.urlsafe_b64encode(
-            sha256(code_verifier.encode(constants.SECRET_ENCODING)).digest()
-        )
-        .decode(constants.SECRET_ENCODING)
+        base64.urlsafe_b64encode(sha256(code_verifier.encode(SECRET_ENCODING)).digest())
+        .decode(SECRET_ENCODING)
         .replace("=", "")
     )  # Remove padding '='
     return hashed_code_verifier == code_challenge
 
 
 def to_base64_string(extra_params: Dict[str, str]) -> str:
-    return base64.b64encode(
-        json.dumps(extra_params).encode(constants.SECRET_ENCODING)
-    ).decode(constants.SECRET_ENCODING)
+    return base64.b64encode(json.dumps(extra_params).encode(SECRET_ENCODING)).decode(
+        SECRET_ENCODING
+    )
 
 
 def to_json(base64_string: str) -> Dict[str, str]:
-    return json.loads(base64.b64decode(base64_string.encode(constants.SECRET_ENCODING)))
+    return json.loads(base64.b64decode(base64_string.encode(SECRET_ENCODING)))
 
 
 def get_timestamp_now() -> int:
@@ -118,7 +123,7 @@ def remove_oldest_item(d: Dict) -> None:
 
 
 def generate_request_uri() -> str:
-    return f"urn:ietf:params:oauth:request_uri:{generate_fixed_size_random_string(length=constants.REQUEST_URI_LENGTH)}"
+    return f"urn:ietf:params:oauth:request_uri:{generate_fixed_size_random_string(length=REQUEST_URI_LENGTH)}"
 
 
 async def get_form_as_dict(request: Request) -> Dict[str, str]:

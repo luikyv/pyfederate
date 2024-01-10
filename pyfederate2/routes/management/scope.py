@@ -3,7 +3,7 @@ from fastapi import Path, APIRouter, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from . import security
 
-from ...utils import schemas
+from ...utils.schemas.scope import ScopeAPIIn, ScopeAPIOut
 
 router = APIRouter(tags=["management"])
 
@@ -15,7 +15,7 @@ router = APIRouter(tags=["management"])
     status_code=status.HTTP_201_CREATED,
 )
 async def create_scope(
-    scope_in: schemas.ScopeIn,
+    scope_in: ScopeAPIIn,
     _: Annotated[None, Depends(security.validate_credentials)],
 ) -> None:
     raise NotImplementedError()
@@ -27,7 +27,7 @@ async def create_scope(
 )
 async def get_scope(
     name: str, _: Annotated[None, Depends(security.validate_credentials)]
-) -> schemas.ScopeOut:
+) -> ScopeAPIOut:
     raise NotImplementedError()
 
 
@@ -37,7 +37,7 @@ async def get_scope(
 )
 async def get_scopes(
     _: Annotated[None, Depends(security.validate_credentials)]
-) -> List[schemas.ScopeOut]:
+) -> List[ScopeAPIOut]:
     raise NotImplementedError()
 
 

@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from pydantic import BaseModel
 
-######################################## Scope ########################################
-
 
 @dataclass
 class Scope:
@@ -10,17 +8,14 @@ class Scope:
     description: str
 
 
-#################### API Models ####################
-
-
-class BaseScope(BaseModel):
+class BaseScopeAPI(BaseModel):
     name: str
     description: str
 
 
-class ScopeIn(BaseScope):
+class ScopeAPIIn(BaseScopeAPI):
     pass
 
 
-class ScopeOut(BaseScope):
+class ScopeAPIOut(BaseScopeAPI):
     pass

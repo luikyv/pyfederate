@@ -4,7 +4,7 @@ import json
 import contextvars
 from datetime import datetime
 
-from . import constants
+from .configs import LOG_LEVEL
 
 tracking_id: contextvars.ContextVar[str] = contextvars.ContextVar(
     "tracking_id", default=str(uuid.UUID("00000000-0000-0000-0000-000000000000"))
@@ -43,7 +43,7 @@ def get_logger(name: str) -> logging.Logger:
     stream_handler.addFilter(ContextFilter())
 
     logger = logging.getLogger(name)
-    logger.setLevel(constants.LOG_LEVEL)
+    logger.setLevel(LOG_LEVEL)
     logger.addHandler(stream_handler)
 
     return logger

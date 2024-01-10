@@ -6,8 +6,6 @@ import jwt
 
 from .. import constants, tools
 
-######################################## Token Model ########################################
-
 
 @dataclass
 class TokenInfo:
@@ -65,7 +63,7 @@ class JWTTokenModel(TokenModel):
 #################### API Models ####################
 
 
-class BaseTokenModel(BaseModel):
+class BaseTokenModelAPI(BaseModel):
     id: str
     issuer: str
     expires_in: int
@@ -73,13 +71,13 @@ class BaseTokenModel(BaseModel):
     refresh_lifetime_secs: int
 
 
-class JWTBaseTokenModel(BaseTokenModel):
+class JWTBaseTokenModelAPI(BaseTokenModelAPI):
     key_id: str | constants.JWK_IDS_LITERAL
 
 
-class JWTTokenModelIn(JWTBaseTokenModel):
+class JWTTokenModelAPIIn(JWTBaseTokenModelAPI):
     pass
 
 
-class JWTTokenModelOut(JWTBaseTokenModel):
+class JWTTokenModelAPIOut(JWTBaseTokenModelAPI):
     pass
