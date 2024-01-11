@@ -3,8 +3,6 @@ from fastapi import Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 
-######################################## Credentials ########################################
-
 security = HTTPBasic()
 
 

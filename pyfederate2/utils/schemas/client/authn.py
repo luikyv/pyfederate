@@ -2,79 +2,74 @@ from pydantic import BaseModel, Field
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 
-from ... import constants
-from .. import oauth
+from ...constants import ClientAuthnMethod
+from ..oauth import ClientAuthnContext
 
 
 @dataclass
 class ClientAuthnInfo(ABC):
-    authn_type: constants.ClientAuthnMethod
+    authn_type: ClientAuthnMethod
 
     @abstractmethod
-    def is_authenticated(self, authn_context: oauth.ClientAuthnContext) -> bool:
+    def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         ...
 
 
 @dataclass
 class NoneAuthnInfo(ClientAuthnInfo):
-    authn_type: constants.ClientAuthnMethod = field(
-        init=False, default=constants.ClientAuthnMethod.NONE
-    )
+    authn_type: ClientAuthnMethod = field(init=False, default=ClientAuthnMethod.NONE)
 
     @abstractmethod
-    def is_authenticated(self, authn_context: oauth.ClientAuthnContext) -> bool:
+    def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         raise NotImplementedError()
 
 
 @dataclass
 class SecretAuthnInfo(ClientAuthnInfo):
-    authn_type: constants.ClientAuthnMethod = field(
-        init=False, default=constants.ClientAuthnMethod.CLIENT_SECRET_POST
+    authn_type: ClientAuthnMethod = field(
+        init=False, default=ClientAuthnMethod.CLIENT_SECRET_POST
     )
     hashed_secret: str
 
     @abstractmethod
-    def is_authenticated(self, authn_context: oauth.ClientAuthnContext) -> bool:
+    def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         raise NotImplementedError()
 
 
 @dataclass
 class PrivateKeyJWTAuthnInfo(ClientAuthnInfo):
-    authn_type: constants.ClientAuthnMethod = field(
-        init=False, default=constants.ClientAuthnMethod.PRIVATE_KEY_JWT
+    authn_type: ClientAuthnMethod = field(
+        init=False, default=ClientAuthnMethod.PRIVATE_KEY_JWT
     )
     public_key: str
     signing_alg: str
 
     @abstractmethod
-    def is_authenticated(self, authn_context: oauth.ClientAuthnContext) -> bool:
+    def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         raise NotImplementedError()
 
 
-#################### API Models ####################
-
-
 class NoneAuthnInfoAPIIn(BaseModel):
-    authn_info: constants.ClientAuthnMethod = Field(
-        init_var=False, default=constants.ClientAuthnMethod.NONE
+    authn_info: ClientAuthnMethod = Field(
+        init_var=False, default=ClientAuthnMethod.NONE
+    )
+
+
+class NoneAuthnInfoAPIOut(BaseModel):
+    authn_info: ClientAuthnMethod = Field(
+        init_var=False, default=ClientAuthnMethod.NONE
     )
 
 
 class SecretAuthnInfoAPIIn(BaseModel):
-    authn_info: constants.ClientAuthnMethod = Field(
-        init_var=False, default=constants.ClientAuthnMethod.CLIENT_SECRET_POST
+    authn_info: ClientAuthnMethod = Field(
+        init_var=False, default=ClientAuthnMethod.CLIENT_SECRET_POST
     )
     secret: str
 
 
-class NoneAuthnInfoAPIOut(BaseModel):
-    authn_info: constants.ClientAuthnMethod = Field(
-        init_var=False, default=constants.ClientAuthnMethod.NONE
-    )
-
-
 class SecretAuthnInfoAPIOut(BaseModel):
-    authn_info: constants.ClientAuthnMethod = Field(
-        init_var=False, default=constants.ClientAuthnMethod.CLIENT_SECRET_POST
+    authn_info: ClientAuthnMethod = Field(
+        init_var=False, default=ClientAuthnMethod.CLIENT_SECRET_POST
     )
     hashed_secret: str

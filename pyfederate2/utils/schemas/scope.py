@@ -7,6 +7,9 @@ class Scope:
     name: str
     description: str
 
+    def to_output(self) -> "ScopeAPIOut":
+        raise NotImplementedError()
+
 
 class BaseScopeAPI(BaseModel):
     name: str
@@ -15,6 +18,9 @@ class BaseScopeAPI(BaseModel):
 
 class ScopeAPIIn(BaseScopeAPI):
     pass
+
+    def to_scope(self) -> Scope:
+        raise NotImplementedError()
 
 
 class ScopeAPIOut(BaseScopeAPI):

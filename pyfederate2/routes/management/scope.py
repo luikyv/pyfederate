@@ -1,13 +1,13 @@
-from typing import Annotated, List
-from fastapi import Path, APIRouter, status, Depends
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from . import security
+from typing import List
+from fastapi import APIRouter, status
 
-from ...utils.schemas.scope import ScopeAPIIn, ScopeAPIOut
+from ...utils.schemas.scope import ScopeAPIIn, ScopeAPIOut, Scope
+from ...utils.managers.auth_manager import AuthManager
+from ...utils.managers.scope import ScopeManager
 
 router = APIRouter(tags=["management"])
-
-######################################## Endpoints ########################################
+auth_manager = AuthManager()
+scope_manager: ScopeManager = auth_manager.scope_manager
 
 
 @router.post(
@@ -16,9 +16,19 @@ router = APIRouter(tags=["management"])
 )
 async def create_scope(
     scope_in: ScopeAPIIn,
-    _: Annotated[None, Depends(security.validate_credentials)],
 ) -> None:
-    raise NotImplementedError()
+    await scope_manager.create_scope(scope=scope_in)
+
+
+@router.put(
+    "/scope/{name}",
+    status_code=status.HTTP_200_OK,
+)
+async def update_scope(
+    name: str,
+    scope_in: ScopeAPIIn,
+) -> None:
+    await scope_manager.update_scope(scope_name=name, scope=scope_in)
 
 
 @router.get(
@@ -26,26 +36,24 @@ async def create_scope(
     status_code=status.HTTP_200_OK,
 )
 async def get_scope(
-    name: str, _: Annotated[None, Depends(security.validate_credentials)]
+    name: str,
 ) -> ScopeAPIOut:
-    raise NotImplementedError()
+    scope: Scope = await scope_manager.get_scope(scope_name=name)
+    return scope.to_output()
 
 
 @router.get(
     "/scopes",
     status_code=status.HTTP_200_OK,
 )
-async def get_scopes(
-    _: Annotated[None, Depends(security.validate_credentials)]
-) -> List[ScopeAPIOut]:
-    raise NotImplementedError()
+async def get_scopes() -> List[ScopeAPIOut]:
+    scopes: List[Scope] = await scope_manager.get_scopes()
+    return [scope.to_output() for scope in scopes]
 
 
 @router.delete(
     "/scope/{name}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_client(
-    name: str, _: Annotated[None, Depends(security.validate_credentials)]
-) -> None:
-    raise NotImplementedError()
+async def delete_client(name: str) -> None:
+    await scope_manager.delete_scope(scope_name=name)

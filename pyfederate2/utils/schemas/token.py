@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 import jwt
 
-from .. import constants, tools
+from ..constants import TokenClaim, SigningAlgorithm, JWK_IDS_LITERAL
+from ..tools import generate_uuid
 
 
 @dataclass
@@ -15,18 +16,18 @@ class TokenInfo:
     expiration: int
     client_id: str
     scopes: List[str]
-    id: str = field(default_factory=tools.generate_uuid)
+    id: str = field(default_factory=generate_uuid)
     additional_info: Dict[str, str] = field(default_factory=dict)
 
     def to_jwt_payload(self) -> Dict[str, Any]:
         payload = {
-            constants.TokenClaim.JWT_ID.value: self.id,
-            constants.TokenClaim.SUBJECT.value: self.subject,
-            constants.TokenClaim.ISSUER.value: self.issuer,
-            constants.TokenClaim.ISSUED_AT.value: self.issued_at,
-            constants.TokenClaim.EXPIRATION.value: self.expiration,
-            constants.TokenClaim.CLIENT_ID.value: self.client_id,
-            constants.TokenClaim.SCOPE.value: " ".join(self.scopes),
+            TokenClaim.JWT_ID.value: self.id,
+            TokenClaim.SUBJECT.value: self.subject,
+            TokenClaim.ISSUER.value: self.issuer,
+            TokenClaim.ISSUED_AT.value: self.issued_at,
+            TokenClaim.EXPIRATION.value: self.expiration,
+            TokenClaim.CLIENT_ID.value: self.client_id,
+            TokenClaim.SCOPE.value: " ".join(self.scopes),
         }
 
         # Merge the two dicts and allow the additional_info to override values in the payload
@@ -45,11 +46,16 @@ class TokenModel(ABC):
     def generate_token(self, token_info: TokenInfo) -> str:
         ...
 
+    @abstractmethod
+    def to_output(self) -> "TokenModelAPIOut":
+        ...
 
+
+@dataclass
 class JWTTokenModel(TokenModel):
     key_id: str
     key: str
-    signing_algorithm: constants.SigningAlgorithm
+    signing_algorithm: SigningAlgorithm
 
     def generate_token(self, token_info: TokenInfo) -> str:
 
@@ -59,8 +65,8 @@ class JWTTokenModel(TokenModel):
             algorithm=self.signing_algorithm.value,
         )
 
-
-#################### API Models ####################
+    def to_output(self) -> "TokenModelAPIOut":
+        raise NotImplementedError()
 
 
 class BaseTokenModelAPI(BaseModel):
@@ -71,13 +77,23 @@ class BaseTokenModelAPI(BaseModel):
     refresh_lifetime_secs: int
 
 
-class JWTBaseTokenModelAPI(BaseTokenModelAPI):
-    key_id: str | constants.JWK_IDS_LITERAL
+class TokenModelAPIIn(BaseModel, ABC):
+    @abstractmethod
+    def to_token_model(self) -> TokenModel:
+        raise NotImplementedError()
 
 
-class JWTTokenModelAPIIn(JWTBaseTokenModelAPI):
+class TokenModelAPIOut(BaseModel):
     pass
 
 
-class JWTTokenModelAPIOut(JWTBaseTokenModelAPI):
+class JWTBaseTokenModelAPI(BaseTokenModelAPI):
+    key_id: str | JWK_IDS_LITERAL
+
+
+class JWTTokenModelAPIIn(TokenModelAPIIn, JWTBaseTokenModelAPI):
+    pass
+
+
+class JWTTokenModelAPIOut(TokenModelAPIOut, JWTBaseTokenModelAPI):
     pass

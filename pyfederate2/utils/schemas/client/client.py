@@ -2,8 +2,9 @@ from pydantic import BaseModel, Field
 from dataclasses import dataclass, field
 from typing import Dict, List
 
-from ... import constants
-from .. import oauth, token_model
+from ...constants import ResponseType, GrantType
+from ..oauth import ClientAuthnContext
+from ..token import TokenModel
 from .authn import (
     NoneAuthnInfoAPIIn,
     SecretAuthnInfoAPIIn,
@@ -18,22 +19,25 @@ class Client:
     client_id: str
     authn_method: ClientAuthnInfo
     redirect_uris: List[str]
-    response_types: List[constants.ResponseType]
-    grant_types: List[constants.GrantType]
+    response_types: List[ResponseType]
+    grant_types: List[GrantType]
     scopes: List[str]
     is_pkce_required: bool
-    token_model: token_model.TokenModel
+    token_model: TokenModel
     extra_params: Dict[str, str] = field(default_factory=dict)
 
-    def is_authenticated(self, authn_context: oauth.ClientAuthnContext) -> bool:
+    def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         return self.authn_method.is_authenticated(authn_context=authn_context)
+
+    def to_output(self) -> "ClientAPIOut":
+        raise NotImplementedError()
 
 
 class BaseClientAPI(BaseModel):
     authn_method: ClientAuthnInfo
     redirect_uris: List[str]
-    response_types: List[constants.ResponseType]
-    grant_types: List[constants.GrantType]
+    response_types: List[ResponseType]
+    grant_types: List[GrantType]
     scopes: List[str]
     is_pkce_required: bool
     token_model_id: str
@@ -43,6 +47,9 @@ class BaseClientAPI(BaseModel):
 class ClientAPIIn(BaseClientAPI):
     client_id: str | None
     authn_info: NoneAuthnInfoAPIIn | SecretAuthnInfoAPIIn
+
+    def to_client(self) -> Client:
+        raise NotImplementedError()
 
 
 class ClientAPIOut(BaseClientAPI):
