@@ -2,10 +2,10 @@ from typing import List
 from fastapi import APIRouter, status
 
 from ...utils.schemas.scope import ScopeAPIIn, ScopeAPIOut, Scope
-from ...utils.managers.auth_manager import AuthManager
+from ...utils.managers.auth import AuthManager
 from ...utils.managers.scope import ScopeManager
 
-router = APIRouter(tags=["management"])
+router = APIRouter(tags=["management", "scope"])
 auth_manager = AuthManager()
 scope_manager: ScopeManager = auth_manager.scope_manager
 
