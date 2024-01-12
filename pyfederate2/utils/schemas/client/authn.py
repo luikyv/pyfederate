@@ -1,75 +1,39 @@
 from pydantic import BaseModel, Field
-from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 
 from ...constants import ClientAuthnMethod
 from ..oauth import ClientAuthnContext
 
 
-@dataclass
-class ClientAuthnInfo(ABC):
-    authn_type: ClientAuthnMethod
-
+class ClientAuthenticator(ABC):
     @abstractmethod
     def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         ...
 
 
-@dataclass
-class NoneAuthnInfo(ClientAuthnInfo):
-    authn_type: ClientAuthnMethod = field(init=False, default=ClientAuthnMethod.NONE)
-
-    @abstractmethod
+class NoneAuthenticator(ClientAuthenticator):
     def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         raise NotImplementedError()
 
 
-@dataclass
-class SecretAuthnInfo(ClientAuthnInfo):
-    authn_type: ClientAuthnMethod = field(
-        init=False, default=ClientAuthnMethod.CLIENT_SECRET_POST
-    )
-    hashed_secret: str
+class SecretAuthnAuthenticator(ClientAuthenticator):
+    def __init__(self, hashed_secret: str) -> None:
+        self._hashed_secret = hashed_secret
 
-    @abstractmethod
     def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         raise NotImplementedError()
 
 
-@dataclass
-class PrivateKeyJWTAuthnInfo(ClientAuthnInfo):
-    authn_type: ClientAuthnMethod = field(
-        init=False, default=ClientAuthnMethod.PRIVATE_KEY_JWT
-    )
-    public_key: str
-    signing_alg: str
-
-    @abstractmethod
-    def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
-        raise NotImplementedError()
+#################### API Models ####################
 
 
-class NoneAuthnInfoAPIIn(BaseModel):
-    authn_info: ClientAuthnMethod = Field(
-        init_var=False, default=ClientAuthnMethod.NONE
-    )
+class BaseClientAuthnInfo(BaseModel):
+    authn_info: ClientAuthnMethod
 
 
-class NoneAuthnInfoAPIOut(BaseModel):
-    authn_info: ClientAuthnMethod = Field(
-        init_var=False, default=ClientAuthnMethod.NONE
-    )
+class ClientAuthnInfoAPIIn(BaseClientAuthnInfo):
+    secret: str | None
 
 
-class SecretAuthnInfoAPIIn(BaseModel):
-    authn_info: ClientAuthnMethod = Field(
-        init_var=False, default=ClientAuthnMethod.CLIENT_SECRET_POST
-    )
-    secret: str
-
-
-class SecretAuthnInfoAPIOut(BaseModel):
-    authn_info: ClientAuthnMethod = Field(
-        init_var=False, default=ClientAuthnMethod.CLIENT_SECRET_POST
-    )
-    hashed_secret: str
+class ClientAuthnInfoAPIOut(BaseClientAuthnInfo):
+    hashed_secret: str | None

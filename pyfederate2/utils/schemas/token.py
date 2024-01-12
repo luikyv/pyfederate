@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 import jwt
 
-from ..constants import TokenClaim, SigningAlgorithm, JWK_IDS_LITERAL
+from ..constants import TokenClaim, TokenModelType, SigningAlgorithm, JWK_IDS_LITERAL
 from ..tools import generate_uuid
 
 
@@ -69,31 +69,23 @@ class JWTTokenModel(TokenModel):
         raise NotImplementedError()
 
 
+#################### API Models ####################
+
+
 class BaseTokenModelAPI(BaseModel):
     id: str
+    model_type: TokenModelType
     issuer: str
     expires_in: int
     is_refreshable: bool
     refresh_lifetime_secs: int
+    key_id: JWK_IDS_LITERAL | None
 
 
-class TokenModelAPIIn(BaseModel, ABC):
-    @abstractmethod
+class TokenModelAPIIn(BaseTokenModelAPI):
     def to_token_model(self) -> TokenModel:
         raise NotImplementedError()
 
 
-class TokenModelAPIOut(BaseModel):
-    pass
-
-
-class JWTBaseTokenModelAPI(BaseTokenModelAPI):
-    key_id: str | JWK_IDS_LITERAL
-
-
-class JWTTokenModelAPIIn(TokenModelAPIIn, JWTBaseTokenModelAPI):
-    pass
-
-
-class JWTTokenModelAPIOut(TokenModelAPIOut, JWTBaseTokenModelAPI):
+class TokenModelAPIOut(BaseTokenModelAPI):
     pass

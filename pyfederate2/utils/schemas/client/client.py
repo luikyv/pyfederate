@@ -3,21 +3,15 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 from ...constants import ResponseType, GrantType
-from ..oauth import ClientAuthnContext
+from ...tools import generate_client_id
 from ..token import TokenModel
-from .authn import (
-    NoneAuthnInfoAPIIn,
-    SecretAuthnInfoAPIIn,
-    NoneAuthnInfoAPIOut,
-    SecretAuthnInfoAPIOut,
-    ClientAuthnInfo,
-)
+from .authn import ClientAuthenticator, ClientAuthnInfoAPIIn, ClientAuthnInfoAPIOut
 
 
 @dataclass
 class Client:
     client_id: str
-    authn_method: ClientAuthnInfo
+    authenticator: ClientAuthenticator
     redirect_uris: List[str]
     response_types: List[ResponseType]
     grant_types: List[GrantType]
@@ -26,15 +20,14 @@ class Client:
     token_model: TokenModel
     extra_params: Dict[str, str] = field(default_factory=dict)
 
-    def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
-        return self.authn_method.is_authenticated(authn_context=authn_context)
-
     def to_output(self) -> "ClientAPIOut":
         raise NotImplementedError()
 
 
+#################### API Models ####################
+
+
 class BaseClientAPI(BaseModel):
-    authn_method: ClientAuthnInfo
     redirect_uris: List[str]
     response_types: List[ResponseType]
     grant_types: List[GrantType]
@@ -45,8 +38,8 @@ class BaseClientAPI(BaseModel):
 
 
 class ClientAPIIn(BaseClientAPI):
-    client_id: str | None
-    authn_info: NoneAuthnInfoAPIIn | SecretAuthnInfoAPIIn
+    client_id: str | None = Field(default_factory=generate_client_id)
+    authn_info: ClientAuthnInfoAPIIn
 
     def to_client(self) -> Client:
         raise NotImplementedError()
@@ -54,4 +47,4 @@ class ClientAPIIn(BaseClientAPI):
 
 class ClientAPIOut(BaseClientAPI):
     client_id: str
-    authn_info: NoneAuthnInfoAPIOut | SecretAuthnInfoAPIOut
+    authn_info: ClientAuthnInfoAPIOut

@@ -1,5 +1,5 @@
 from typing import Annotated, List
-from fastapi import APIRouter, status, Path
+from fastapi import APIRouter, status, Path, HTTPException
 
 from ...utils.schemas.client import ClientAPIIn, ClientAPIOut, Client
 from ...utils.managers.auth import AuthManager

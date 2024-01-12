@@ -1,7 +1,7 @@
 from typing import Annotated, List
 from fastapi import Path, APIRouter, status
 
-from ...utils.schemas.token import JWTTokenModelAPIIn, JWTTokenModelAPIOut, TokenModel
+from ...utils.schemas.token import TokenModelAPIIn, TokenModelAPIOut, TokenModel
 from ...utils.managers.auth import AuthManager
 from ...utils.managers.token import TokenModelManager
 
@@ -15,7 +15,7 @@ token_model_manager: TokenModelManager = auth_manager.token_model_manager
     status_code=status.HTTP_201_CREATED,
 )
 async def create_token_model(
-    token_model_input: JWTTokenModelAPIIn,
+    token_model_input: TokenModelAPIIn,
 ) -> None:
     await token_model_manager.create_token_model(
         token_model=token_model_input.to_token_model()
@@ -28,7 +28,7 @@ async def create_token_model(
 )
 async def update_token_model(
     token_model_id: Annotated[str, Path(alias="id")],
-    token_model_input: JWTTokenModelAPIIn,
+    token_model_input: TokenModelAPIIn,
 ) -> None:
     await token_model_manager.update_token_model(
         token_model_id=token_model_id, token_model=token_model_input.to_token_model()
@@ -41,7 +41,7 @@ async def update_token_model(
 )
 async def get_token_model(
     token_model_id: Annotated[str, Path(alias="id")]
-) -> JWTTokenModelAPIOut:
+) -> TokenModelAPIOut:
     token_model: TokenModel = await token_model_manager.get_token_model(
         token_model_id=token_model_id
     )
@@ -52,10 +52,11 @@ async def get_token_model(
     "/token-models",
     status_code=status.HTTP_200_OK,
 )
-async def get_token_models() -> List[JWTTokenModelAPIOut]:
+async def get_token_models() -> List[TokenModelAPIOut]:
     token_models: List[TokenModel] = await token_model_manager.get_token_models()
 
-    return [token_model.to_output() for token_model in token_models]  # type: ignore
+    # type: ignore
+    return [token_model.to_output() for token_model in token_models]
 
 
 @router.delete(

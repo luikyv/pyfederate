@@ -52,6 +52,11 @@ class ClientAuthnMethod(Enum):
     PRIVATE_KEY_JWT = "private_key_jwt"
 
 
+class TokenModelType(Enum):
+    JWT = "jwt"
+    OPAQUE = "opaque"
+
+
 class ErrorCode(Enum):
     ACCESS_DENIED = status.HTTP_403_FORBIDDEN
     INVALID_REQUEST = status.HTTP_400_BAD_REQUEST
