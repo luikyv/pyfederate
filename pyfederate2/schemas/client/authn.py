@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from abc import ABC, abstractmethod
 
+from ...tools import hash_secret
 from ...constants import ClientAuthnMethod
 from ..oauth import ClientAuthnContext
 
@@ -16,7 +17,7 @@ class NoneAuthenticator(ClientAuthenticator):
         raise NotImplementedError()
 
 
-class SecretAuthnAuthenticator(ClientAuthenticator):
+class SecretAuthenticator(ClientAuthenticator):
     def __init__(self, hashed_secret: str) -> None:
         self._hashed_secret = hashed_secret
 
@@ -31,9 +32,9 @@ class BaseClientAuthnInfo(BaseModel):
     authn_info: ClientAuthnMethod
 
 
-class ClientAuthnInfoAPIIn(BaseClientAuthnInfo):
+class ClientAuthnInfoIn(BaseClientAuthnInfo):
     secret: str | None
 
 
-class ClientAuthnInfoAPIOut(BaseClientAuthnInfo):
-    hashed_secret: str | None
+class ClientAuthnInfoOut(BaseClientAuthnInfo):
+    hashed_secret: str | None = None

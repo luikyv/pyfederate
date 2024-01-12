@@ -1,11 +1,11 @@
 from typing import Annotated, List
 from fastapi import Path, APIRouter, status
 
-from ...utils.schemas.token import TokenModelIn, TokenModelOut, TokenModel
-from ...utils.managers.auth import AuthManager
-from ...utils.managers.token import TokenModelManager
+from ..schemas.token import TokenModelIn, TokenModelOut
+from ..managers.auth import AuthManager
+from ..managers.token import TokenModelManager
 
-router = APIRouter(tags=["management", "token"])
+router = APIRouter(tags=["management", "token_model"])
 auth_manager = AuthManager()
 token_model_manager: TokenModelManager = auth_manager.token_model_manager
 
@@ -17,9 +17,7 @@ token_model_manager: TokenModelManager = auth_manager.token_model_manager
 async def create_token_model(
     token_model_input: TokenModelIn,
 ) -> None:
-    await token_model_manager.create_token_model(
-        token_model=token_model_input.to_token_model()
-    )
+    await token_model_manager.create_token_model(token_model=token_model_input)
 
 
 @router.put(
@@ -31,7 +29,7 @@ async def update_token_model(
     token_model_input: TokenModelIn,
 ) -> None:
     await token_model_manager.update_token_model(
-        token_model_id=token_model_id, token_model=token_model_input.to_token_model()
+        token_model_id=token_model_id, token_model=token_model_input
     )
 
 
@@ -42,10 +40,7 @@ async def update_token_model(
 async def get_token_model(
     token_model_id: Annotated[str, Path(alias="id")]
 ) -> TokenModelOut:
-    token_model: TokenModel = await token_model_manager.get_token_model(
-        token_model_id=token_model_id
-    )
-    return token_model.to_output()  # type: ignore
+    return await token_model_manager.get_token_model_out(token_model_id=token_model_id)
 
 
 @router.get(
@@ -53,10 +48,7 @@ async def get_token_model(
     status_code=status.HTTP_200_OK,
 )
 async def get_token_models() -> List[TokenModelOut]:
-    token_models: List[TokenModel] = await token_model_manager.get_token_models()
-
-    # type: ignore
-    return [token_model.to_output() for token_model in token_models]
+    return await token_model_manager.get_token_models_out()
 
 
 @router.delete(

@@ -1,11 +1,11 @@
 from typing import Annotated, List
 from fastapi import APIRouter, status, Path, HTTPException
 
-from ...utils.schemas.client import ClientIn, ClientOut, Client
-from ...utils.managers.auth import AuthManager
-from ...utils.managers.client import ClientManager
+from ..schemas.client import ClientIn, ClientOut
+from ..managers.auth import AuthManager
+from ..managers.client import ClientManager
 
-router = APIRouter(tags=["management", "scope"])
+router = APIRouter(tags=["management", "client"])
 auth_manager = AuthManager()
 client_manager: ClientManager = auth_manager.client_manager
 
@@ -15,7 +15,7 @@ client_manager: ClientManager = auth_manager.client_manager
     status_code=status.HTTP_201_CREATED,
 )
 async def create_client(client_in: ClientIn) -> None:
-    await client_manager.create_client(client=client_in.to_client())
+    await client_manager.create_client(client=client_in)
 
 
 @router.put(
@@ -25,9 +25,7 @@ async def create_client(client_in: ClientIn) -> None:
 async def update_client(
     client_id: Annotated[str, Path(alias="id")], client_in: ClientIn
 ) -> None:
-    await client_manager.update_client(
-        client_id=client_id, client=client_in.to_client()
-    )
+    await client_manager.update_client(client_id=client_id, client=client_in)
 
 
 @router.get(
@@ -37,8 +35,7 @@ async def update_client(
     response_model_exclude_none=True,
 )
 async def get_client(client_id: Annotated[str, Path(alias="id")]):
-    client: Client = await client_manager.get_client(client_id=client_id)
-    return client.to_output()
+    return await client_manager.get_client(client_id=client_id)
 
 
 @router.get(
@@ -47,5 +44,4 @@ async def get_client(client_id: Annotated[str, Path(alias="id")]):
     response_model_exclude_none=True,
 )
 async def get_clients() -> List[ClientOut]:
-    clients: List[Client] = await client_manager.get_clients()
-    return [c.to_output() for c in clients]
+    return await client_manager.get_clients_out()

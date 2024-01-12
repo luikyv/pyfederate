@@ -1,9 +1,9 @@
 from typing import List
 from fastapi import APIRouter, status
 
-from ...utils.schemas.scope import ScopeIn, ScopeOut, Scope
-from ...utils.managers.auth import AuthManager
-from ...utils.managers.scope import ScopeManager
+from ..schemas.scope import ScopeIn, ScopeOut
+from ..managers.auth import AuthManager
+from ..managers.scope import ScopeManager
 
 router = APIRouter(tags=["management", "scope"])
 auth_manager = AuthManager()
@@ -38,8 +38,7 @@ async def update_scope(
 async def get_scope(
     name: str,
 ) -> ScopeOut:
-    scope: Scope = await scope_manager.get_scope(scope_name=name)
-    return scope.to_output()
+    return await scope_manager.get_scope_out(scope_name=name)
 
 
 @router.get(
@@ -47,8 +46,7 @@ async def get_scope(
     status_code=status.HTTP_200_OK,
 )
 async def get_scopes() -> List[ScopeOut]:
-    scopes: List[Scope] = await scope_manager.get_scopes()
-    return [scope.to_output() for scope in scopes]
+    return await scope_manager.get_scopes_out()
 
 
 @router.delete(

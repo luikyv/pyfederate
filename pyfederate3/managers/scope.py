@@ -1,12 +1,12 @@
 from typing import List
 from abc import ABC, abstractmethod
 
-from ..schemas.scope import ScopeAPIIn, Scope
+from ..schemas.scope import ScopeIn, ScopeOut
 
 
 class ScopeManager(ABC):
     @abstractmethod
-    async def create_scope(self, scope: ScopeAPIIn) -> None:
+    async def create_scope(self, scope: ScopeIn) -> None:
         """
         Throws:
             EntityAlreadyExistsException
@@ -14,7 +14,7 @@ class ScopeManager(ABC):
         pass
 
     @abstractmethod
-    async def update_scope(self, scope_name: str, scope: ScopeAPIIn) -> None:
+    async def update_scope(self, scope_name: str, scope: ScopeIn) -> None:
         """
         Throws:
             EntityDoesNotExistException
@@ -22,7 +22,7 @@ class ScopeManager(ABC):
         pass
 
     @abstractmethod
-    async def get_scope(self, scope_name: str) -> Scope:
+    async def get_scope_out(self, scope_name: str) -> ScopeOut:
         """
         Throws:
             EntityDoesNotExistException
@@ -30,7 +30,7 @@ class ScopeManager(ABC):
         pass
 
     @abstractmethod
-    async def get_scopes(self) -> List[Scope]:
+    async def get_scopes_out(self) -> List[ScopeOut]:
         pass
 
     @abstractmethod
