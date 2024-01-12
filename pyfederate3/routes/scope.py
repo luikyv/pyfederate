@@ -3,11 +3,11 @@ from fastapi import APIRouter, status
 
 from ..schemas.scope import ScopeIn, ScopeOut
 from ..managers.auth import AuthManager
-from ..managers.scope import ScopeManager
+from ..managers.scope import APIScopeManager
 
 router = APIRouter(tags=["management", "scope"])
 auth_manager = AuthManager()
-scope_manager: ScopeManager = auth_manager.scope_manager
+scope_manager: APIScopeManager = auth_manager.scope_manager
 
 
 @router.post(

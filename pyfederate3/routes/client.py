@@ -3,11 +3,11 @@ from fastapi import APIRouter, status, Path, HTTPException
 
 from ..schemas.client import ClientIn, ClientOut
 from ..managers.auth import AuthManager
-from ..managers.client import ClientManager
+from ..managers.client import APIClientManager
 
 router = APIRouter(tags=["management", "client"])
 auth_manager = AuthManager()
-client_manager: ClientManager = auth_manager.client_manager
+client_manager: APIClientManager = auth_manager.client_manager
 
 
 @router.post(
