@@ -13,6 +13,8 @@ import json
 import time
 import functools
 
+from ..schemas.oauth import JWKInfo
+from ..utils.constants import SigningAlgorithm
 from .config import (
     CLIENT_ID_MIN_LENGH,
     CLIENT_ID_MAX_LENGH,
@@ -24,6 +26,7 @@ from .config import (
     REFRESH_TOKEN_LENGTH,
     SECRET_ENCODING,
     REQUEST_URI_LENGTH,
+    PRIVATE_JWKS_JSON,
 )
 
 alphabet = string.ascii_letters + string.digits
@@ -129,3 +132,12 @@ def generate_request_uri() -> str:
 async def get_form_as_dict(request: Request) -> Dict[str, str]:
     form_data = await request.form()
     return {item[0]: str(item[1]) for item in form_data.multi_items()}
+
+
+def get_jwk(key_id: str) -> JWKInfo:
+    jwt_json = PRIVATE_JWKS_JSON["keys"][key_id]
+    return JWKInfo(
+        key_id=jwt_json["kid"],
+        key=jwt_json["k"],
+        signing_algorithm=SigningAlgorithm(jwt_json["alg"]),
+    )

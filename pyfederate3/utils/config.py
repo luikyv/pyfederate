@@ -2,6 +2,8 @@ from enum import Enum
 import logging
 import os
 from dotenv import load_dotenv
+import base64
+import json
 
 
 class Environment(Enum):
@@ -29,3 +31,7 @@ REQUEST_URI_LENGTH = int(os.getenv("REQUEST_URI_LENGTH", 20))
 REQUEST_URI_TIMEOUT = int(os.getenv("REQUEST_URI_TIMEOUT", 60))
 SERVER_PORT = int(os.getenv("SERVER_PORT", 80))
 VERSION = os.getenv("VERSION", "0.1.0")
+PRIVATE_JWKS_JSON = json.loads(
+    # The privates jwks are passed as a base64 enconded json through the env var PRIVATE_JWKS_JSON
+    base64.b64decode(os.environ["PRIVATE_JWKS_JSON"]).decode(SECRET_ENCODING)
+)

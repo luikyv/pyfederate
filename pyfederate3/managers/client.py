@@ -2,10 +2,23 @@ from typing import Dict, List
 from abc import ABC, abstractmethod
 
 from .token import InternalTokenModelManager
-from ..schemas.client import ClientIn, ClientOut, ClientAuthnInfoIn, ClientAuthnInfoOut
-from ..utils.client import Client
+from ..schemas.client import (
+    ClientIn,
+    ClientOut,
+    ClientInfo,
+    ClientAuthnInfoIn,
+    ClientAuthnInfoOut,
+)
+from ..utils.client import (
+    Client,
+    ClientAuthenticator,
+    NoneAuthenticator,
+    SecretAuthenticator,
+)
+from ..utils.token import TokenModel
 from ..utils.telemetry import get_logger
 from ..utils.tools import remove_oldest_item, hash_secret
+from ..utils.constants import ClientAuthnMethod
 from .exceptions import EntityAlreadyExistsException, EntityDoesNotExistException
 
 logger = get_logger(__name__)
@@ -87,7 +100,44 @@ class InMemoryClientManager(APIClientManager, InternalClientManager):
         Throws:
             exceptions.EntityDoesNotExistException
         """
-        raise NotImplementedError()
+
+        client: ClientIn | None = self._clients.get(client_id, None)
+        if not client:
+            raise EntityDoesNotExistException()
+        token_model: TokenModel = await self._token_manager.get_token_model(
+            token_model_id=client.token_model_id
+        )
+
+        return Client(
+            info=ClientInfo(
+                client_id=client.client_id,
+                redirect_uris=client.redirect_uris,
+                response_types=client.response_types,
+                grant_types=client.grant_types,
+                scopes=client.scopes,
+                is_pkce_required=client.is_pkce_required,
+                extra_params=client.extra_params,
+            ),
+            authenticator=self._build_client_authenticator(
+                client_authn_info=client.authn_info
+            ),
+            token_model=token_model,
+        )
+
+    def _build_client_authenticator(
+        self, client_authn_info: ClientAuthnInfoIn
+    ) -> ClientAuthenticator:
+
+        if client_authn_info.authn_info == ClientAuthnMethod.NONE:
+            return NoneAuthenticator()
+        elif client_authn_info.authn_info == ClientAuthnMethod.CLIENT_SECRET_POST:
+            return SecretAuthenticator(
+                hashed_secret=client_authn_info.secret
+                if client_authn_info.secret
+                else ""
+            )
+
+        raise RuntimeError("Invalid client authentication method")
 
     async def get_client_out(self, client_id: str) -> ClientOut:
 
