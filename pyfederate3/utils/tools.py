@@ -13,7 +13,7 @@ import json
 import time
 import functools
 
-from ..schemas.oauth import JWKInfo
+from ..schemas.token import JWKInfo
 from ..utils.constants import SigningAlgorithm
 from .config import (
     CLIENT_ID_MIN_LENGH,

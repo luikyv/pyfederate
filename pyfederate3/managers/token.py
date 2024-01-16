@@ -1,8 +1,7 @@
 from typing import Dict, List
 from abc import ABC, abstractmethod
 
-from ..schemas.token import TokenModelIn, TokenModelOut, JWTTokenModelInfo
-from ..schemas.oauth import JWKInfo
+from ..schemas.token import TokenModelIn, TokenModelOut, JWTTokenModelInfo, JWKInfo
 from ..utils.token import TokenModel, JWTTokenModel
 from ..utils.telemetry import get_logger
 from ..utils.tools import remove_oldest_item, get_jwk

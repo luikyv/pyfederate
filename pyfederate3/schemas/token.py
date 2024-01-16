@@ -1,8 +1,6 @@
-from typing import Any, Dict, List
-from abc import ABC, abstractmethod
+from typing import Dict, List
 from dataclasses import dataclass, field
 from pydantic import BaseModel, Field
-import jwt
 
 from ..utils.constants import SigningAlgorithm, TokenModelType
 
@@ -18,6 +16,32 @@ class TokenModelInfo:
 
 @dataclass
 class JWTTokenModelInfo(TokenModelInfo):
+    key_id: str
+    key: str
+    signing_algorithm: SigningAlgorithm
+
+
+@dataclass
+class TokenInfo:
+    id: str
+    subject: str
+    issuer: str
+    issued_at: int
+    expiration: int
+    client_id: str
+    scopes: List[str]
+    token_model_id: str
+    additional_info: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class Token:
+    token: str
+    info: TokenInfo
+
+
+@dataclass
+class JWKInfo:
     key_id: str
     key: str
     signing_algorithm: SigningAlgorithm
