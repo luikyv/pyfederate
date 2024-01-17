@@ -104,9 +104,6 @@ class InMemoryClientManager(APIClientManager, InternalClientManager):
         client: ClientIn | None = self._clients.get(client_id, None)
         if not client:
             raise EntityDoesNotExistException()
-        token_model: TokenModel = await self._token_manager.get_token_model(
-            token_model_id=client.token_model_id
-        )
 
         return Client(
             info=ClientInfo(
@@ -116,12 +113,12 @@ class InMemoryClientManager(APIClientManager, InternalClientManager):
                 grant_types=client.grant_types,
                 scopes=client.scopes,
                 is_pkce_required=client.is_pkce_required,
+                default_token_model_id=client.default_token_model_id,
                 extra_params=client.extra_params,
             ),
             authenticator=self._build_client_authenticator(
                 client_authn_info=client.authn_info
             ),
-            token_model=token_model,
         )
 
     def _build_client_authenticator(

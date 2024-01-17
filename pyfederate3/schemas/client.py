@@ -14,6 +14,7 @@ class ClientInfo:
     grant_types: List[GrantType]
     scopes: List[str]
     is_pkce_required: bool
+    default_token_model_id: str
     extra_params: Dict[str, str] = field(default_factory=dict)
 
 
@@ -43,7 +44,7 @@ class BaseClient(BaseModel):
     grant_types: List[GrantType]
     scopes: List[str]
     is_pkce_required: bool
-    token_model_id: str
+    default_token_model_id: str
     extra_params: Dict[str, str] = Field(default_factory=dict)
 
 

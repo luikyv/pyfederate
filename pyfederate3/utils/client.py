@@ -35,11 +35,9 @@ class Client:
         self,
         info: ClientInfo,
         authenticator: ClientAuthenticator,
-        token_model: TokenModel,
     ) -> None:
         self._info = info
         self._authenticator = authenticator
-        self._token_model = token_model
 
-    def get_token_model(self) -> TokenModel:
-        return self._token_model
+    def get_default_token_model_id(self) -> str:
+        return self._info.default_token_model_id

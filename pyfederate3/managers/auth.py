@@ -1,5 +1,5 @@
 from .scope import APIScopeManager
-from .token import TokenModelManager
+from .token import APITokenModelManager
 from .client import APIClientManager
 from ..utils.tools import singleton
 
@@ -10,7 +10,7 @@ class AuthManager:
         self,
     ) -> None:
         self._scope_manager: APIScopeManager | None = None
-        self._token_model_manager: TokenModelManager | None = None
+        self._token_model_manager: APITokenModelManager | None = None
         self._client_manager: APIClientManager | None = None
         # self._session_manager: SessionManager | None = None
         # self.authn_policies: List[schemas.AuthnPolicy] = []
@@ -28,13 +28,13 @@ class AuthManager:
         self._scope_manager = scope_manager
 
     @property
-    def token_model_manager(self) -> TokenModelManager:
+    def token_model_manager(self) -> APITokenModelManager:
         if self._token_model_manager is None:
             raise RuntimeError()
         return self._token_model_manager
 
     @token_model_manager.setter
-    def token_model_manager(self, token_model_manager: TokenModelManager) -> None:
+    def token_model_manager(self, token_model_manager: APITokenModelManager) -> None:
         if self._token_model_manager is not None:
             raise RuntimeError()
         self._token_model_manager = token_model_manager
