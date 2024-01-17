@@ -11,7 +11,7 @@ class AuthnInfo:
 
 
 @dataclass
-class AuthnStepInfo:
+class NextAuthnSteps:
     step_id: str
     next_step_id_if_success: str | None
     next_step_id_if_failure: str | None
@@ -20,4 +20,4 @@ class AuthnStepInfo:
 @dataclass
 class AuthnStepChain:
     first_step_id: str
-    authn_steps: List[AuthnStepInfo]
+    next_authn_step_map: Dict[str, NextAuthnSteps]
