@@ -11,7 +11,7 @@ from .exceptions import EntityAlreadyExistsException, EntityDoesNotExistExceptio
 logger = get_logger(__name__)
 
 
-class InternalTokenModelManager(ABC):
+class InternalTokenModelCRUDManager(ABC):
     @abstractmethod
     async def get_token_model(self, token_model_id: str) -> TokenModel:
         """
@@ -21,7 +21,7 @@ class InternalTokenModelManager(ABC):
         pass
 
 
-class APITokenModelManager(ABC):
+class APITokenModelCRUDManager(ABC):
     @abstractmethod
     async def create_token_model(self, token_model: TokenModelIn) -> None:
         """
@@ -57,7 +57,11 @@ class APITokenModelManager(ABC):
         pass
 
 
-class InMemoryTokenModelManager(APITokenModelManager, InternalTokenModelManager):
+class TokenModelCRUDManager(APITokenModelCRUDManager, InternalTokenModelCRUDManager):
+    pass
+
+
+class APIInMemoryTokenModelCRUDManager(TokenModelCRUDManager):
     def __init__(self, max_number: int = 10) -> None:
         self._max_number = max_number
         self._token_models: Dict[str, TokenModelIn] = {}

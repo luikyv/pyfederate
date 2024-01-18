@@ -1,7 +1,7 @@
 from typing import Dict, List
 from abc import ABC, abstractmethod
 
-from .token import InternalTokenModelManager
+from .token import InternalTokenModelCRUDManager
 from ..schemas.client import (
     ClientIn,
     ClientOut,
@@ -24,7 +24,7 @@ from .exceptions import EntityAlreadyExistsException, EntityDoesNotExistExceptio
 logger = get_logger(__name__)
 
 
-class InternalClientManager(ABC):
+class InternalClientCRUDManager(ABC):
     @abstractmethod
     async def get_client(self, client_id: str) -> Client:
         """
@@ -34,7 +34,7 @@ class InternalClientManager(ABC):
         pass
 
 
-class APIClientManager(ABC):
+class APIClientCRUDManager(ABC):
     @abstractmethod
     async def create_client(self, client: ClientIn) -> None:
         """
@@ -68,9 +68,13 @@ class APIClientManager(ABC):
         pass
 
 
-class InMemoryClientManager(APIClientManager, InternalClientManager):
+class ClientCRUDManager(APIClientCRUDManager, InternalClientCRUDManager):
+    pass
+
+
+class APIInMemoryClientCRUDManager(ClientCRUDManager):
     def __init__(
-        self, token_manager: InternalTokenModelManager, max_number: int = 10
+        self, token_manager: InternalTokenModelCRUDManager, max_number: int = 10
     ) -> None:
         self._max_number = max_number
         self._token_manager = token_manager
@@ -94,7 +98,6 @@ class InMemoryClientManager(APIClientManager, InternalClientManager):
 
         self._clients[client.client_id] = client
 
-    @abstractmethod
     async def get_client(self, client_id: str) -> Client:
         """
         Throws:

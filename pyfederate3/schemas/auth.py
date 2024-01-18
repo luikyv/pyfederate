@@ -20,4 +20,5 @@ class NextAuthnSteps:
 @dataclass
 class AuthnStepChain:
     first_step_id: str
+    # Map an authn step to its next steps
     next_authn_step_map: Dict[str, NextAuthnSteps]

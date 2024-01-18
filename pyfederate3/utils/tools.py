@@ -7,7 +7,7 @@ import bcrypt
 import uuid
 from random import randint
 from urllib.parse import quote
-from hashlib import sha256
+
 import base64
 import json
 import time
@@ -25,7 +25,6 @@ from .config import (
     SESSION_ID_LENGTH,
     REFRESH_TOKEN_LENGTH,
     SECRET_ENCODING,
-    REQUEST_URI_LENGTH,
     PRIVATE_JWKS_JSON,
 )
 
@@ -97,15 +96,6 @@ def prepare_redirect_url(url: str, params: Dict[str, str]) -> str:
     return quote(str(request_url_builder.url), safe=":/%#?=@[]!$&'()*+,;")
 
 
-def is_pkce_valid(code_verifier: str, code_challenge: str) -> bool:
-    hashed_code_verifier = (
-        base64.urlsafe_b64encode(sha256(code_verifier.encode(SECRET_ENCODING)).digest())
-        .decode(SECRET_ENCODING)
-        .replace("=", "")
-    )  # Remove padding '='
-    return hashed_code_verifier == code_challenge
-
-
 def to_base64_string(extra_params: Dict[str, str]) -> str:
     return base64.b64encode(json.dumps(extra_params).encode(SECRET_ENCODING)).decode(
         SECRET_ENCODING
@@ -123,10 +113,6 @@ def get_timestamp_now() -> int:
 def remove_oldest_item(d: Dict) -> None:
     first_key = next(iter(d))
     d.pop(first_key)
-
-
-def generate_request_uri() -> str:
-    return f"urn:ietf:params:oauth:request_uri:{generate_fixed_size_random_string(length=REQUEST_URI_LENGTH)}"
 
 
 async def get_form_as_dict(request: Request) -> Dict[str, str]:

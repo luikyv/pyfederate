@@ -9,7 +9,7 @@ from .exceptions import EntityAlreadyExistsException, EntityDoesNotExistExceptio
 logger = get_logger(__name__)
 
 
-class APIScopeManager(ABC):
+class APIScopeCRUDManager(ABC):
     @abstractmethod
     async def create_scope(self, scope: ScopeIn) -> None:
         """
@@ -43,7 +43,11 @@ class APIScopeManager(ABC):
         pass
 
 
-class InMemoryScopeManager(APIScopeManager):
+class ScopeCRUDManager(APIScopeCRUDManager):
+    pass
+
+
+class APIInMemoryScopeCRUDManager(ScopeCRUDManager):
     def __init__(self, max_number: int = 100) -> None:
         self._max_number = max_number
         self._scopes: Dict[str, ScopeIn] = {}
@@ -75,7 +79,7 @@ class InMemoryScopeManager(APIScopeManager):
         scope: ScopeIn = self._scopes[scope_name]
         return ScopeOut(name=scope.name, description=scope.description)
 
-    async def get_scopes(self) -> List[ScopeOut]:
+    async def get_scopes_out(self) -> List[ScopeOut]:
         return [
             ScopeOut(name=scope.name, description=scope.description)
             for scope in self._scopes.values()

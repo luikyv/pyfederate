@@ -3,7 +3,7 @@ from fastapi import Request, Response
 from inspect import isawaitable
 from typing import Awaitable, Callable, Dict
 
-from ..utils.constants import AuthnStatus
+from .constants import AuthnStatus
 from ..schemas.auth import AuthnStepChain, NextAuthnSteps
 
 
@@ -109,14 +109,14 @@ class AuthnPolicy:
             if last_response.get_status() == AuthnStatus.IN_PROGRESS:
                 return last_response.get_response()
 
-            authn_step = self._get_next_step(
+            authn_step = self._get_next_step_when_failure_or_success(
                 current_step_id=authn_step.get_step_id(),
                 current_status_status=last_response.get_status(),
             )
 
-        return last_response.get_response()  # type: ignore
+        return last_response  # type: ignore
 
-    def _get_next_step(
+    def _get_next_step_when_failure_or_success(
         self, current_step_id: str, current_status_status: AuthnStatus
     ) -> AuthnStep | None:
         next_steps: NextAuthnSteps = self._authn_step_chain.next_authn_step_map[
