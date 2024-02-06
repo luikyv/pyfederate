@@ -21,17 +21,22 @@ class JWTTokenModelInfo(TokenModelInfo):
     signing_algorithm: SigningAlgorithm
 
 
-@dataclass
-class TokenInfo:
-    id: str
+@dataclass(kw_only=True)
+class TokenContextInfo:
     subject: str
-    issuer: str
-    issued_at: int
-    expiration: int
     client_id: str
     scopes: List[str]
-    token_model_id: str
     additional_info: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class TokenInfo(TokenContextInfo):
+    id: str
+    issuer: str
+    issued_at: int
+    expires_in_secs: int
+    client_id: str
+    token_model_id: str
 
 
 @dataclass

@@ -40,6 +40,9 @@ class Client:
         self._info = info
         self._authenticator = authenticator
 
+    def get_id(self) -> str:
+        return self._info.client_id
+
     def get_default_token_model_id(self) -> str:
         return self._info.default_token_model_id
 

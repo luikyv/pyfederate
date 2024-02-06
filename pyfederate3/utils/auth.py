@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from fastapi import Request, Response
 from inspect import isawaitable
-from typing import Awaitable, Callable, Dict
+from typing import Awaitable, Callable, Dict, List
 
 from .constants import AuthnStatus
+from ..utils.client import Client
 from ..schemas.auth import AuthnStepChain, NextAuthnSteps
 
 
@@ -87,9 +88,15 @@ class AuthnPolicy:
 
     AUTHN_POLICIES: Dict[str, "AuthnPolicy"] = {}
 
-    def __init__(self, policy_id: str, authn_step_chain: AuthnStepChain) -> None:
+    def __init__(
+        self,
+        policy_id: str,
+        authn_step_chain: AuthnStepChain,
+        is_available: Callable[[Client, Request], bool],
+    ) -> None:
         self._policy_id = policy_id
         self._authn_step_chain = authn_step_chain
+        self._is_available = is_available
         self._register_itself()
 
     def _register_itself(self) -> None:
@@ -98,6 +105,22 @@ class AuthnPolicy:
                 f"An authentication policy with ID: {self._policy_id} already exists"
             )
         AuthnPolicy.AUTHN_POLICIES[self._policy_id] = self
+
+    @classmethod
+    def get_policy(cls, client: Client, request: Request) -> "AuthnPolicy":
+        available_policies: List[AuthnPolicy] = list(
+            filter(
+                lambda policy: policy.is_available(client, request),
+                AuthnPolicy.AUTHN_POLICIES.values(),
+            )
+        )
+        if len(available_policies) == 0:
+            raise RuntimeError("No authentication policy available")
+
+        return available_policies[0]
+
+    def is_available(self, client: Client, request: Request) -> bool:
+        return self.is_available(client, request)
 
     async def authenticate(self, request: Request) -> Response:
 
