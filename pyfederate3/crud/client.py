@@ -72,7 +72,7 @@ class ClientCRUDManager(APIClientCRUDManager, InternalClientCRUDManager):
     pass
 
 
-class APIInMemoryClientCRUDManager(ClientCRUDManager):
+class InMemoryClientCRUDManager(ClientCRUDManager):
     def __init__(
         self, token_manager: InternalTokenModelCRUDManager, max_number: int = 10
     ) -> None:

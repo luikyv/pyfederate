@@ -61,7 +61,7 @@ class TokenModelCRUDManager(APITokenModelCRUDManager, InternalTokenModelCRUDMana
     pass
 
 
-class APIInMemoryTokenModelCRUDManager(TokenModelCRUDManager):
+class InMemoryTokenModelCRUDManager(TokenModelCRUDManager):
     def __init__(self, max_number: int = 10) -> None:
         self._max_number = max_number
         self._token_models: Dict[str, TokenModelIn] = {}

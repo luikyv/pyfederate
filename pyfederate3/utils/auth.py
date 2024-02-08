@@ -5,7 +5,7 @@ from typing import Awaitable, Callable, Dict, List
 
 from .constants import AuthnStatus
 from ..utils.client import Client
-from ..schemas.auth import AuthnStepChain, NextAuthnSteps
+from ..schemas.auth import AuthnStepChain, NextAuthnSteps, AuthnSession
 
 
 class AuthnResponse(ABC):
@@ -106,8 +106,16 @@ class AuthnPolicy:
             )
         AuthnPolicy.AUTHN_POLICIES[self._policy_id] = self
 
+    def get_id(self) -> str:
+        return self._policy_id
+
+    def get_first_step(self) -> str:
+        return self._authn_step_chain.first_step_id
+
     @classmethod
-    def get_policy(cls, client: Client, request: Request) -> "AuthnPolicy":
+    def get_policy_by_initial_request(
+        cls, client: Client, request: Request
+    ) -> "AuthnPolicy":
         available_policies: List[AuthnPolicy] = list(
             filter(
                 lambda policy: policy.is_available(client, request),
@@ -119,15 +127,20 @@ class AuthnPolicy:
 
         return available_policies[0]
 
+    @classmethod
+    def get_policy(cls, policy_id: str) -> "AuthnPolicy":
+        return AuthnPolicy.AUTHN_POLICIES[policy_id]
+
     def is_available(self, client: Client, request: Request) -> bool:
         return self.is_available(client, request)
 
-    async def authenticate(self, request: Request) -> Response:
+    async def authenticate(self, request: Request, session: AuthnSession) -> Response:
 
-        authn_step: AuthnStep | None = AuthnStep.get_step("")
+        authn_step: AuthnStep | None = AuthnStep.get_step(session.current_step_id)
         last_response: AuthnResponse
         while authn_step:
 
+            session.current_step_id = authn_step.get_step_id()
             last_response = await authn_step.authenticate(request=request)
             if last_response.get_status() == AuthnStatus.IN_PROGRESS:
                 return last_response.get_response()
@@ -137,7 +150,7 @@ class AuthnPolicy:
                 current_status_status=last_response.get_status(),
             )
 
-        return last_response  # type: ignore
+        return last_response.get_response()  # type: ignore
 
     def _get_next_step_when_failure_or_success(
         self, current_step_id: str, current_status_status: AuthnStatus

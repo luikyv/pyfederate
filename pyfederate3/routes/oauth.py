@@ -2,7 +2,9 @@ from typing import Annotated, List
 from fastapi import APIRouter, status, Form, Depends, Request, Response, Query
 
 from ..crud.auth import AuthCRUDManager
+from ..utils.auth import AuthnPolicy
 from ..utils.telemetry import get_logger
+from ..schemas.auth import AuthnSession
 from ..schemas.oauth import TokenResponse, GrantContext
 from ..utils.constants import (
     GrantType,
@@ -17,6 +19,8 @@ from ..utils.oauth import (
     get_client_as_query,
     get_response_types_as_query,
     get_scopes_as_query,
+    get_session_by_callback_id,
+    validate_authorization_request,
     grant_handlers,
 )
 
@@ -58,19 +62,19 @@ async def authorize(
     request: Request,
     client: Annotated[Client, Depends(get_client_as_query)],
     response_types: Annotated[List[ResponseType], Depends(get_response_types_as_query)],
-    requested_scopes: Annotated[List[str], Depends(get_scopes_as_query)],
+    scopes: Annotated[List[str], Depends(get_scopes_as_query)],
     redirect_uri: Annotated[
-        str | None,
+        str,
         Query(
             description="URL to where the user will be redirected to once he is authenticated"
         ),
-    ] = None,
+    ],
     state: Annotated[
-        str | None,
+        str,
         Query(
             description="Random value that will be sent as-is in the redirect_uri. It protects the client against CSRF attacks",
         ),
-    ] = None,
+    ],
     code_challenge: Annotated[
         str | None,
         Query(
@@ -82,4 +86,35 @@ async def authorize(
         Query(description="Method used to generate the code challenge"),
     ] = CodeChallengeMethod.S256,
 ) -> Response:
-    return None  # type: ignore
+
+    policy = AuthnPolicy.get_policy_by_initial_request(client=client, request=request)
+    session = AuthnSession(
+        policy_id=policy.get_id(),
+        current_step_id=policy.get_first_step(),
+        client_id=client.get_id(),
+        redirect_uri=redirect_uri,
+        response_types=response_types,
+        scopes=scopes,
+        state=state,
+    )
+    validate_authorization_request(client=client, session=session)
+
+    response: Response = await policy.authenticate(request=request, session=session)
+    await AuthCRUDManager.get_manager().authn_session_manager.create_session(
+        session=session
+    )
+    return response
+
+
+@router.post("/authorize/{callback_id}", status_code=status.HTTP_200_OK)
+async def callback_authorize(
+    session: Annotated[AuthnSession, Depends(get_session_by_callback_id)],
+    request: Request,
+):
+    response: Response = await AuthnPolicy.get_policy(
+        policy_id=session.policy_id
+    ).authenticate(request=request, session=session)
+    await AuthCRUDManager.get_manager().authn_session_manager.update_session(
+        session=session
+    )
+    return response

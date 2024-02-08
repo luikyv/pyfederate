@@ -1,6 +1,7 @@
 from .scope import ScopeCRUDManager
 from .token import TokenModelCRUDManager
 from .client import ClientCRUDManager
+from .session import AuthnSessionCRUDManager
 from ..utils.tools import singleton
 
 
@@ -12,8 +13,7 @@ class AuthCRUDManager:
         self._scope_manager: ScopeCRUDManager | None = None
         self._token_model_manager: TokenModelCRUDManager | None = None
         self._client_manager: ClientCRUDManager | None = None
-        # self._session_manager: SessionManager | None = None
-        # self.authn_policies: List[schemas.AuthnPolicy] = []
+        self._authn_session_manager: AuthnSessionCRUDManager | None = None
 
     @classmethod
     def get_manager(cls) -> "AuthCRUDManager":
@@ -54,3 +54,17 @@ class AuthCRUDManager:
         if self._client_manager is not None:
             raise RuntimeError()
         self._client_manager = client_manager
+
+    @property
+    def authn_session_manager(self) -> AuthnSessionCRUDManager:
+        if self._authn_session_manager is None:
+            raise RuntimeError()
+        return self._authn_session_manager
+
+    @authn_session_manager.setter
+    def authn_session_manager(
+        self, authn_session_manager: AuthnSessionCRUDManager
+    ) -> None:
+        if self._authn_session_manager is not None:
+            raise RuntimeError()
+        self._authn_session_manager = authn_session_manager

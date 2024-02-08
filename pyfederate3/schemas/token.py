@@ -35,7 +35,6 @@ class TokenInfo(TokenContextInfo):
     issuer: str
     issued_at: int
     expires_in_secs: int
-    client_id: str
     token_model_id: str
 
 

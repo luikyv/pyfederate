@@ -1,5 +1,5 @@
 from typing import Annotated, Awaitable, Callable, Dict, List
-from fastapi import Form, Query
+from fastapi import Form, Query, Path
 import base64
 from hashlib import sha256
 
@@ -8,23 +8,24 @@ from ..utils.token import TokenModel
 from ..utils.tools import generate_fixed_size_random_string
 from ..utils.exceptions import OAuthJsonResponseException
 from ..utils.constants import ErrorCode, GrantType, ResponseType
-from ..utils.config import REQUEST_URI_LENGTH, SECRET_ENCODING
+from ..utils.config import REQUEST_URI_LENGTH, SECRET_ENCODING, CALLBACK_ID_LENGTH
 from ..crud.auth import AuthCRUDManager
 from ..crud.exceptions import EntityDoesNotExistException
 from ..schemas.client import ClientAuthnContext
 from ..schemas.oauth import GrantContext, TokenResponse
 from ..schemas.token import TokenContextInfo, Token
+from ..schemas.auth import AuthnSession
 
 
-def _get_scopes(scope_string: str | None) -> List[str] | None:
-    return scope_string.split(" ") if scope_string is not None else None
+def _get_scopes(scope_string: str | None) -> List[str]:
+    return scope_string.split(" ") if scope_string is not None else []
 
 
 def get_scopes_as_form(
     scope: Annotated[
         str | None, Form(description="Space separeted list of scopes")
     ] = None
-) -> List[str] | None:
+) -> List[str]:
     return _get_scopes(scope_string=scope)
 
 
@@ -32,9 +33,7 @@ def get_scopes_as_query(
     scope: Annotated[
         str | None, Query(description="Space separeted list of scopes")
     ] = None,
-) -> List[str] | None:
-    if not scope:
-        return None
+) -> List[str]:
     return _get_scopes(scope_string=scope)
 
 
@@ -87,6 +86,33 @@ async def get_client_as_query(client_id: Annotated[str, Query()]) -> Client:
             error=ErrorCode.INVALID_REQUEST,
             error_description=f"client with id: {client_id} does not exist",
         )
+
+
+async def get_session_by_callback_id(
+    callback_id: Annotated[
+        str,
+        Path(
+            min_length=CALLBACK_ID_LENGTH,
+            max_length=CALLBACK_ID_LENGTH,
+            description="ID generated during the /authorize",
+        ),
+    ]
+) -> AuthnSession:
+    """
+    Fetch the session associated to the callback_id if it exists and
+    set the tracking and correlation IDs using the session information
+    """
+
+    try:
+        session: AuthnSession = await AuthCRUDManager.get_manager().authn_session_manager.get_session_by_callback_id(
+            callback_id=callback_id
+        )
+    except EntityDoesNotExistException:
+        raise OAuthJsonResponseException(
+            error=ErrorCode.INVALID_REQUEST,
+            error_description="invalid callback id",
+        )
+    return session
 
 
 def generate_request_uri() -> str:
@@ -170,3 +196,32 @@ grant_handlers: Dict[
     # GrantType.AUTHORIZATION_CODE: authorization_code_token_handler,
     # GrantType.REFRESH_TOKEN: refresh_token_handler,
 }
+
+
+def validate_authorization_request(client: Client, session: AuthnSession) -> None:
+    raise NotImplementedError()
+    if not client.owns_redirect_uri(redirect_uri=authorize_session.redirect_uri):
+        raise exceptions.JsonResponseException(
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="invalid redirect_uri",
+        )
+
+    if not client.are_scopes_allowed(scopes=authorize_session.scopes):
+        raise exceptions.AuthnException(
+            error=constants.ErrorCode.INVALID_SCOPE,
+            error_description="scope not allowed",
+        )
+
+    if not client.are_response_types_allowed(
+        response_types=authorize_session.response_types
+    ):
+        raise exceptions.AuthnException(
+            error=constants.ErrorCode.INVALID_REQUEST,
+            error_description="response type not allowed",
+        )
+
+    # if client.is_pkce_required and authorize_session.code_challenge is None:
+    #     raise exceptions.AuthnException(
+    #         error=constants.ErrorCode.INVALID_REQUEST,
+    #         error_description="pkce is required",
+    #     )
