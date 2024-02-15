@@ -5,6 +5,7 @@ from ..crud.auth import AuthCRUDManager
 from ..utils.auth import AuthnPolicy
 from ..utils.telemetry import get_logger
 from ..schemas.auth import AuthnSession
+from ..schemas.token import Token
 from ..schemas.oauth import TokenResponse, GrantContext
 from ..utils.constants import (
     GrantType,
@@ -45,6 +46,7 @@ async def get_token(
     code_verifier: Annotated[str | None, Form(min_length=43, max_length=128)] = None,
     correlation_id: CORRELATION_ID_HEADER_TYPE = None,
 ) -> TokenResponse:
+    
     grant_context = GrantContext(
         grant_type=grant_type,
         scopes=scopes,
@@ -54,7 +56,14 @@ async def get_token(
         code_verifier=code_verifier,
         correlation_id=correlation_id,
     )
-    return await grant_handlers[grant_type](grant_context, client)
+    
+    token: Token = await grant_handlers[grant_type](grant_context, client)
+    await AuthCRUDManager.get_manager().token_session_manager.create_token_session(info=token.info)
+    return TokenResponse(
+        access_token=token.token,
+        expires_in=token.info.expires_in_secs,
+        scope=token.info.scopes,
+    )
 
 
 @router.get("/authorize", status_code=status.HTTP_200_OK)
@@ -96,6 +105,8 @@ async def authorize(
         response_types=response_types,
         scopes=scopes,
         state=state,
+        authorization_code=None,
+        code_challenge=code_challenge
     )
     validate_authorization_request(client=client, session=session)
 

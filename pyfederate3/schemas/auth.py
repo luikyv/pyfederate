@@ -21,6 +21,7 @@ class AuthnStepChain:
 
 @dataclass
 class AuthnSession:
+    subject: str | None
     policy_id: str
     current_step_id: str
     client_id: str
@@ -28,6 +29,8 @@ class AuthnSession:
     response_types: List[ResponseType]
     scopes: List[str]
     state: str
+    authorization_code: str | None
+    code_challenge: str | None
     id: str = field(default_factory=generate_session_id)
     callback_id: str = field(default_factory=generate_callback_id)
     correlation_id: str = field(default_factory=correlation_id.get)

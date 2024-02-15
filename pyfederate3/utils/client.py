@@ -52,5 +52,11 @@ class Client:
     def is_authenticated(self, authn_context: ClientAuthnContext) -> bool:
         return self._authenticator.is_authenticated(authn_context=authn_context)
 
-    def are_scopes_allowed(self, scopes: List[str]) -> bool:
+    def scopes_are_allowed(self, scopes: List[str]) -> bool:
         return scopes in self._info.scopes
+    
+    def response_types_are_allowed(self, response_types: List[str]) -> bool:
+        return set(self._info.response_types).issuperset(response_types)
+    
+    def pkce_is_required(self) -> bool:
+        return self._info.pkce_is_required

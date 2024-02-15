@@ -13,7 +13,7 @@ class ClientInfo:
     response_types: List[ResponseType]
     grant_types: List[GrantType]
     scopes: List[str]
-    is_pkce_required: bool
+    pkce_is_required: bool
     default_token_model_id: str
     extra_params: Dict[str, str] = field(default_factory=dict)
 

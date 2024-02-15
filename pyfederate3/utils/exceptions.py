@@ -22,4 +22,4 @@ class OAuthRedirectResponseException(OAuthnException):
     ) -> None:
         self.redirect_uri = redirect_uri
         self.state = state
-        super().__init__(error, error_description)
+        super().__init__(error=error, error_description=error_description)

@@ -115,7 +115,7 @@ class InMemoryClientCRUDManager(ClientCRUDManager):
                 response_types=client.response_types,
                 grant_types=client.grant_types,
                 scopes=client.scopes,
-                is_pkce_required=client.is_pkce_required,
+                pkce_is_required=client.is_pkce_required,
                 default_token_model_id=client.default_token_model_id,
                 extra_params=client.extra_params,
             ),
