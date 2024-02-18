@@ -2,12 +2,10 @@ from typing import Annotated, List
 from fastapi import Path, APIRouter, status
 
 from ..schemas.token import TokenModelIn, TokenModelOut
-from ..managers.auth import AuthManager
-from ..managers.token import TokenModelManager
+from ..crud.auth import AuthCRUDManager
 
-router = APIRouter(tags=["management", "token_model"])
-auth_manager = AuthManager()
-token_model_manager: TokenModelManager = auth_manager.token_model_manager
+router = APIRouter(tags=["management"])
+auth_manager = AuthCRUDManager()
 
 
 @router.post(
@@ -17,7 +15,7 @@ token_model_manager: TokenModelManager = auth_manager.token_model_manager
 async def create_token_model(
     token_model_input: TokenModelIn,
 ) -> None:
-    await token_model_manager.create_token_model(token_model=token_model_input)
+    await auth_manager.token_model_manager.create_token_model(token_model=token_model_input)
 
 
 @router.put(
@@ -28,7 +26,7 @@ async def update_token_model(
     token_model_id: Annotated[str, Path(alias="id")],
     token_model_input: TokenModelIn,
 ) -> None:
-    await token_model_manager.update_token_model(
+    await auth_manager.token_model_manager.update_token_model(
         token_model_id=token_model_id, token_model=token_model_input
     )
 
@@ -40,7 +38,7 @@ async def update_token_model(
 async def get_token_model(
     token_model_id: Annotated[str, Path(alias="id")]
 ) -> TokenModelOut:
-    return await token_model_manager.get_token_model_out(token_model_id=token_model_id)
+    return await auth_manager.token_model_manager.get_token_model_out(token_model_id=token_model_id)
 
 
 @router.get(
@@ -48,7 +46,7 @@ async def get_token_model(
     status_code=status.HTTP_200_OK,
 )
 async def get_token_models() -> List[TokenModelOut]:
-    return await token_model_manager.get_token_models_out()
+    return await auth_manager.token_model_manager.get_token_models_out()
 
 
 @router.delete(
@@ -58,4 +56,4 @@ async def get_token_models() -> List[TokenModelOut]:
 async def delete_token_model(
     token_model_id: Annotated[str, Path(alias="id")],
 ) -> None:
-    await token_model_manager.delete_token_model(token_model_id=token_model_id)
+    await auth_manager.token_model_manager.delete_token_model(token_model_id=token_model_id)

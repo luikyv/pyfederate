@@ -163,7 +163,7 @@ def _validate_client_credentials_grant(
         )
 
 
-async def _client_credentials_grant_handler(
+async def generate_client_credentials_grant_token(
     grant_context: GrantContext, client: Client
 ) -> Token:
     _validate_client_credentials_grant(grant_context=grant_context, client=client)
@@ -228,7 +228,7 @@ async def _get_and_delete_valid_authentication_session(
     await AuthCRUDManager.get_manager().authn_session_manager.delete_session(session_id=session.id)
     return session
 
-async def _authorization_code_grant_handler(
+async def generate_authorization_code_grant_token(
     grant_context: GrantContext, client: Client
 ) -> Token:
     
@@ -248,15 +248,6 @@ async def _authorization_code_grant_handler(
             scopes=session.scopes,
         )
     )
-
-
-
-grant_handlers: Dict[
-    GrantType, Callable[[GrantContext, Client], Awaitable[Token]]
-] = {
-    GrantType.CLIENT_CREDENTIALS: _client_credentials_grant_handler,
-    GrantType.AUTHORIZATION_CODE: _authorization_code_grant_handler,
-}
 
 
 def validate_authorization_request(client: Client, session: AuthnSession) -> None:

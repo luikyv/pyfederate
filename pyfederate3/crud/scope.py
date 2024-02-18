@@ -47,7 +47,7 @@ class ScopeCRUDManager(APIScopeCRUDManager):
     pass
 
 
-class APIInMemoryScopeCRUDManager(ScopeCRUDManager):
+class InMemoryScopeCRUDManager(ScopeCRUDManager):
     def __init__(self, max_number: int = 100) -> None:
         self._max_number = max_number
         self._scopes: Dict[str, ScopeIn] = {}

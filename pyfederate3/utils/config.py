@@ -12,6 +12,7 @@ class Environment(Enum):
     LOCAL = "LOCAL"
 
 
+VERSION = os.getenv("VERSION", "1.0.0")
 ENVIRONMENT = Environment(os.getenv("ENVIRONMENT", "TEST"))
 if ENVIRONMENT == Environment.TEST:
     load_dotenv("tests/test.env")

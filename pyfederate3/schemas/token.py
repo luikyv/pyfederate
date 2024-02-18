@@ -56,7 +56,7 @@ class JWKInfo:
 
 class BaseTokenModel(BaseModel):
     id: str
-    model_type: TokenModelType
+    token_model_type: TokenModelType
     issuer: str
     expires_in: int
     is_refreshable: bool = Field(default=False)

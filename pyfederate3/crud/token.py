@@ -123,7 +123,7 @@ class InMemoryTokenModelCRUDManager(TokenModelCRUDManager):
         token_model: TokenModelIn = self._token_models[token_model_id]
         return TokenModelOut(**token_model.model_dump())
 
-    async def get_token_models(self) -> List[TokenModelOut]:
+    async def get_token_models_out(self) -> List[TokenModelOut]:
         return [
             TokenModelOut(**token_model.model_dump())
             for token_model in self._token_models.values()

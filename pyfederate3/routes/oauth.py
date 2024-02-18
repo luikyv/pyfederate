@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated, Awaitable, Callable, Dict, List
 from fastapi import APIRouter, status, Form, Depends, Request, Response, Query
 
 from ..crud.auth import AuthCRUDManager
@@ -22,14 +22,20 @@ from ..utils.oauth import (
     get_scopes_as_query,
     get_session_by_callback_id,
     validate_authorization_request,
-    grant_handlers,
+    generate_client_credentials_grant_token,
+    generate_authorization_code_grant_token
 )
 
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["oauth"])
-auth_manager = AuthCRUDManager.get_manager()
-
+auth_manager = AuthCRUDManager()
+grant_handlers: Dict[
+    GrantType, Callable[[GrantContext, Client], Awaitable[Token]]
+] = {
+    GrantType.CLIENT_CREDENTIALS: generate_client_credentials_grant_token,
+    GrantType.AUTHORIZATION_CODE: generate_authorization_code_grant_token,
+}
 
 @router.post(
     "/token",
